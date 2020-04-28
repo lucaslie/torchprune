@@ -1,0 +1,22 @@
+# general keys in parameters that can be ignored
+blacklist: [
+    "useCuda", # from training
+    "sensTracking",
+    "methods",
+    "numRepetitions",
+    "numNets",
+    "useRamTest",
+    "useRamTrain",
+
+    "directories", # different save directories
+
+    "blacklist", # the blacklist itself
+
+    "datasetTest", # the dataset used for testing (no effect on compression)
+
+    "generated", # generated parameters
+
+    "network_colors", # plotting only
+    "network_names",
+    "plotting",
+  ]

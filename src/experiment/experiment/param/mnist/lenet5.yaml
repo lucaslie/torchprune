@@ -1,0 +1,41 @@
+description: "LeNet 5 on MNIST"
+
+network:
+  name: "lenet5"
+  dataset: "MNIST"
+  outputSize: 10
+
+training:
+  file: "mnist/training/lenet5.yaml"
+
+retraining:
+  numEpochs: 40
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SiPPNet"
+    - "ThresNet"
+    - "SnipNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.1
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 15
+      maxVal: 0.5
+      minVal: 0.02
+
+  retrainIterations: -1
+
+coresets:
+  deltaS: 1.0e-9 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-5 # 1.0e-4 previously
+  sizeOfT: 0.002 # ratio of validation set for evaluating error_C

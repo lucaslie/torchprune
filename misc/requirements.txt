@@ -1,0 +1,14 @@
+# The pruning packages
+-e ./src/provable_pruning
+-e ./src/experiment
+
+# Some extra requirements for the code base
+jupyter
+black
+ipython
+flake8
+pre-commit
+pycodestyle
+pydocstyle
+pylint
+pyfiglet

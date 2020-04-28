@@ -1,0 +1,28 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+training:
+  useCUDA: True
+  sensTracking: False
+
+  numEpochs: 300
+
+  warmup: 10
+  cooldown: 0
+
+  numGPUs: 2
+
+  batchSize: 64
+  learningRate: 0.1
+  lRmilestones: [150, 225]
+  lRgamma: 0.1
+  optimizer: "SGD"
+  nesterov: True
+  momentum: 0.9
+  weightDecay: 1.0e-4
+  transformsTest: []
+  transformsTrain: ["Pad(4)", "RandomCrop(32)", "RandomHorizontalFlip()"]
+  loss: "nn.CrossEntropyLoss"

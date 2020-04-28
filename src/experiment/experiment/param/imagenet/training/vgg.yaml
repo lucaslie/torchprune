@@ -1,0 +1,27 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+training:
+  sensTracking: False
+
+  numEpochs: 90
+
+  warmup: 5
+  cooldown: 0
+
+  batchSize: 16
+  learningRate: 0.01
+  numGPUs: 2
+
+  lRmilestones: [30, 60, 80]
+  lRgamma: 0.1
+  optimizer: "SGD"
+  nesterov: False
+  momentum: 0.9
+  weightDecay: 5.0e-4
+  transformsTest: ["Resize(256)", "CenterCrop(224)"]
+  transformsTrain: ["RandomResizedCrop(224)", "RandomHorizontalFlip()"]
+  loss: "nn.CrossEntropyLoss"

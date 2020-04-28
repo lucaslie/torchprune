@@ -1,0 +1,28 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+training:
+  useCUDA: True
+  sensTracking: False
+
+  numEpochs: 100
+
+  warmup: 0
+  cooldown: 0
+
+  numGPUs: 1
+
+  batchSize: 32
+  learningRate: 0.0001
+  lRmilestones: [50, 90]
+  lRgamma: 0.1
+  optimizer: "Adam"
+  nesterov: False
+  momentum: 0.9
+  weightDecay: 1.0e-4
+  transformsTest: []
+  transformsTrain: ["RandomHorizontalFlip()"]
+  loss: "nn.MSELoss"

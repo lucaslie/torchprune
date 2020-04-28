@@ -1,0 +1,41 @@
+network_names:
+  ReferenceNet: ReferenceNet
+  NetHandle: ReferenceNet
+  EllOneAndTwoNet: $\frac{\ell_1+\ell_2}{2}$
+  EllOneNet: $\ell_1$
+  EllTwoNet: $\ell_2$
+  FilterThresNet: FT
+  FilterUniNet: Uniform Filters
+  PFPNet: PFP
+  PFPNetRand: PFPNet (rand)
+  PFPNetTop: PFPNet (partial)
+  SVDNet: SVD
+  SiPPNet: SiPP
+  SiPPNetHybrid: SiPPNetHybrid
+  SiPPNetRand: SiPPNetRand
+  SnipNet: SNIP
+  SoftNet: SoftNet
+  ThiNet: ThiNet
+  ThresNet: WT
+  UniNet: Uniform
+
+network_colors:
+  ReferenceNet: black
+  NetHandle: black
+  EllOneAndTwoNet: purple
+  EllOneNet: blueviolet
+  EllTwoNet: magenta
+  FilterThresNet: green
+  FilterUniNet: "#708090"
+  PFPNet: blue
+  PFPNetRand: black
+  PFPNetTop: red
+  SVDNet: green
+  SiPPNet: "#b4d8e7"
+  SiPPNetHybrid: "#b4d8e7"
+  SiPPNetRand: blue
+  SnipNet: lightskyblue
+  SoftNet: red
+  ThiNet: purple
+  ThresNet: red
+  UniNet: "#808080"

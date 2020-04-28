@@ -1,0 +1,47 @@
+network:
+  name: "resnet101"
+  dataset: "ImageNet"
+  outputSize: 1000
+
+training:
+  file: "imagenet/training/resnet.yaml"
+
+retraining:
+  warmup: 5
+  numEpochs: 90
+
+experiments:
+  methods:
+    - "SiPPNet"
+    - "PFPNet"
+    - "ThresNet"
+    - "FilterThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 1
+
+  plotting:
+    minVal: 0.3
+    maxVal: 0.95
+
+  spacing:
+    - type: "geometric"
+      maxVal: 0.90
+      minVal: 0.35
+      numIntervals: 12
+    - type: "linear"
+      maxVal: 0.31
+      minVal: 0.10
+      numIntervals: 6
+  retrainIterations: -1
+
+  sensLogging: False
+
+  useRamTest: False
+  useRamTrain: False
+
+coresets:
+  deltaS: 1.0e-16 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-11 # 1.0e-4 previously
+  sizeOfT: 0.1 # ratio of validation set for evaluating error_C

@@ -1,0 +1,52 @@
+network:
+  name: "vgg16_bn"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "cifar/training/vgg.yaml"
+
+retraining:
+  warmup: 5
+  cooldown: 0
+  numEpochs: 150
+  lRmilestones: [30, 60, 90, 120, 150, 180, 210, 240, 270, 300]
+  learningRate: 0.05
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SiPPNet"
+    - "ThresNet"
+    - "SnipNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.4
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 2
+      maxVal: 0.99
+      minVal: 0.855
+    - type: "geometric"
+      numIntervals: 58 # number of intervals to 0.5 in cascade mode
+      maxVal: 0.85
+      minVal: 0.02
+
+  retrainIterations: 20
+
+  sensLogging: False
+
+  useRamTest: False
+  useRamTrain: False
+
+coresets:
+  deltaS: 1.0e-16 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-11 # 1.0e-4 previously
+  sizeOfT: 0.1 # ratio of validation set for evaluating error_C

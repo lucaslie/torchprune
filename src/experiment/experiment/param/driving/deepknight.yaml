@@ -1,0 +1,39 @@
+network:
+  name: "deepknight"
+  dataset: "Driving"
+  outputSize: 1
+
+training:
+  file: "driving/training/deepknight.yaml"
+
+retraining:
+  numEpochs: 0
+
+experiments:
+  methods: ["SiPPNet", "ThresNet"]
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.001
+    maxVal: 0.05
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 40 # number of intervals to 0.5 in cascade mode
+      minVal: 0.001
+      maxVal: 0.1
+
+  retrainIterations: -1
+
+  sensLogging: False
+
+  useRamTest: False
+  useRamTrain: False
+
+coresets:
+  deltaS: 1.0e-32 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-11 # 1.0e-4 previously
+  sizeOfT: 0.1 # ratio of validation set for evaluating error_C
