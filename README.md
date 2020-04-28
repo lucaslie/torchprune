@@ -63,6 +63,7 @@ To create a new conda environment run
 ```sh
 conda create -n pp
 conda activate pp
+conda install pip
 ```
 To install the `provable_pruning` package containing the pytorch implementation
 of our pruning methods as well as all comparison methods, run
