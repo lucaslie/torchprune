@@ -135,20 +135,3 @@ year={2020},
 url={https://openreview.net/forum?id=BJxkOlSYDH}
 }
 ```
-
-## blg convenience script
-### Setup
-cd into the top-level compression directory, i.e., 
-```
-cd /path/to/compression
-```
-Now run
-```
-chmod +x misc/blg.py
-python3 misc/blg.py setup
-source ~/.bashrc
-```
-### Functionality
-From now on, you can use `blg` to access the convenience scripts. `blg -h
-` will give you the available commands at the different levels. For more
-questions ask [Lucas](mailto:lucasl@mit.edu).
