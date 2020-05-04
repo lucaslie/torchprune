@@ -41,7 +41,7 @@ to the corresponding output neuron over a small set of points `x \in S`:
   <img src="./misc/imgs/sensitivity.png" width="30%">
 </p>
 
-The weight hereby represents the edge connecting neuron `j` in layer `ell-1` to
+The weight hereby represents the edge connecting neuron `j` in layer `l-1` to
 neuron `i` in layer `l`. This notion can  then be generalized to convolutional
 layers, neurons, and filters among others as is shown in the respective papers. 
 
