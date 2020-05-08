@@ -1,7 +1,6 @@
 """A module with our customization for stdout to include a file log."""
 import sys
 import datetime
-import os.path
 import re
 
 
@@ -22,7 +21,7 @@ class _StdoutLogger(object):
             self._last_msg_len = 0
 
         # this will be the file where we also log
-        self._stdout_file = open(file_name, "w")
+        self._stdout_file = file_name
 
     def write(self, msg, name=None):
         """Write to file and console.
@@ -77,7 +76,8 @@ class _StdoutLogger(object):
 
         # also write to log file
         time_tag = datetime.datetime.utcnow().strftime("%Y-%m-%d, %H:%M:%S.%f")
-        print(f"{time_tag}: {msg}", file=self._stdout_file)
+        with open(self._stdout_file, "a") as logfile:
+            print(f"{time_tag}: {msg}", file=logfile)
 
         # store last_name
         self._last_name = name
@@ -88,14 +88,10 @@ class _StdoutLogger(object):
     def flush(self):
         """Flush console and file."""
         self._stdout_original.flush()
-        self._stdout_file.flush()
 
 
-def setup_stdout(results_dir):
+def setup_stdout(log_file):
     """Set up stdout logger with this function."""
-    # log file name
-    log_file = os.path.join(results_dir, "experiment.log")
-
     # get an instance of the stdout logger
     stdout_logger = _StdoutLogger(log_file)
 

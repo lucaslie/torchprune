@@ -315,7 +315,7 @@ class NetTrainer(object):
         torch.set_grad_enabled(True)
 
         # setup torch.distributed and spawn processes
-        num_workers = self.train_loader.num_workers // self.num_gpus
+        num_workers = self.train_loader.num_workers // max(self.num_gpus, 1)
 
         # empty gpu cache to make sure everything is ready for retraining
         torch.cuda.empty_cache()
@@ -456,6 +456,9 @@ def train_with_worker(
         file_name_checkpoint, net_handle, optimizer, loc
     )
 
+    # wait for all processes to load the checkpoint
+    dist.barrier()
+
     # this may be non-zero in the case of rewinding ...
     if not found_checkpoint:
         start_epoch = params["startEpoch"]
@@ -475,9 +478,6 @@ def train_with_worker(
     # make it faster
     if not is_cpu:
         cudnn.benchmark = True
-
-    # switch to train mode
-    net_parallel.train()
 
     # convenience function for storing check points
     def store_checkpoints(epoch):
@@ -518,15 +518,14 @@ def train_with_worker(
         )
 
         # test after one epoch
-        if gpu_id == 0 and train_logger is not None:
-            _test_one_epoch(
-                loader=test_loader,
-                criterion=criterion,
-                epoch=epoch,
-                device=worker_device,
-                net=net_parallel,
-                train_logger=train_logger,
-            )
+        _test_one_epoch(
+            loader=test_loader,
+            criterion=criterion,
+            epoch=epoch,
+            device=worker_device,
+            net=net_parallel,
+            train_logger=train_logger if gpu_id == 0 else None,
+        )
 
     # store final checkpoint
     store_checkpoints(params["numEpochs"])
@@ -540,6 +539,7 @@ def train_with_worker(
 
     # destroy process group at the end
     if is_distributed:
+        dist.barrier()
         dist.destroy_process_group()
 
 
@@ -560,6 +560,9 @@ def _train_one_epoch(
     t_optim = 0.0
     t_enforce = 0.0
     t_log = 0.0
+
+    # switch to train mode
+    net_parallel.train()
 
     # go through one epoch and train
     for i, (images, targets) in enumerate(train_loader):
@@ -624,6 +627,9 @@ def _test_one_epoch(loader, criterion, epoch, device, net, train_logger=None):
     loss = 0
     num_total = 0
 
+    # switch to eval mode
+    net.eval()
+
     with torch.no_grad():
         for images, targets in loader:
             # move to correct device
@@ -647,7 +653,7 @@ def _test_one_epoch(loader, criterion, epoch, device, net, train_logger=None):
     acc5 /= num_total
     loss /= num_total
 
-    # make sure loss is also a regular float (not torch.Tensor)/s
+    # make sure loss is also a regular float (not torch.Tensor)
     loss = float(loss)
 
     if train_logger is not None:

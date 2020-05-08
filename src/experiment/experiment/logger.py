@@ -286,11 +286,12 @@ class Logger:
         util_file.create_directory(self._results_dir)
 
         # setup logging (with convenience function)
-        self._stdout_logger = pp_logging.setup_stdout(self._results_dir)
+        stdout_file = os.path.join(self._results_dir, "experiment.log")
+        self._stdout_logger = pp_logging.setup_stdout(stdout_file)
 
         # setup train logger
         self._train_logger = pp_logging.TrainLogger(
-            self._log_dir, self.global_tag, self._class_to_names
+            self._log_dir, stdout_file, self.global_tag, self._class_to_names,
         )
 
         # initialize writer

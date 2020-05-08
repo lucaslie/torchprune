@@ -4,6 +4,7 @@ import time
 import math
 
 from torch.utils import tensorboard as tb
+from .stdout import setup_stdout
 from .tensorboard import log_scalar
 
 
@@ -16,14 +17,23 @@ class TrainLogger(object):
     multiprocessing context.
     """
 
-    def __init__(self, log_dir=None, global_tag=None, class_to_names=None):
+    def __init__(
+        self,
+        log_dir=None,
+        stdout_file=None,
+        global_tag=None,
+        class_to_names=None,
+    ):
         """Initialize the train logger.
 
         If the optional arguments are not supplied, the logger will print
-        updates about the training progress but won't log it to tensorboard
+        updates about the training progress but won't log it to tensorboard or
+        log it to a file
         """
         self._global_tag = global_tag
         self._logdir = log_dir
+        self._stdout_file = stdout_file
+        self._stdout_init = False
         self._diagnostics_step = 20 if "imagenet" in self._logdir else 50
         self._class_to_names = class_to_names
 
@@ -80,8 +90,9 @@ class TrainLogger(object):
         s_idx=None,
     ):
         """Initialize the logger for the current (re-)training session."""
-        # reset the writer
+        # reset the writer and logger
         self._writer = None
+        self._stdout_init = False
 
         # setup parameters
         if self._class_to_names is None:
@@ -171,7 +182,7 @@ class TrainLogger(object):
         self._t_last_print = time.time()
 
         # print progress
-        print(
+        self._print(
             self._progress_str.format(
                 epoch + 1, step, loss, acc1 * 100.0, acc5 * 100.0, t_elapsed
             )
@@ -225,9 +236,9 @@ class TrainLogger(object):
         """Finish test statistics computations and store them."""
         # store statistics
         self.test_epoch.append(epoch)
-        self.test_acc1.append(loss)
-        self.test_acc5.append(acc1)
-        self.test_loss.append(acc5)
+        self.test_loss.append(float(loss))
+        self.test_acc1.append(acc1)
+        self.test_acc5.append(acc5)
 
         # get the writer
         writer = self._get_writer()
@@ -268,7 +279,7 @@ class TrainLogger(object):
             )
 
         # print progress
-        print(
+        self._print(
             self._test_str.format(
                 self.test_epoch[-1] + 1,
                 self.test_loss[-1],
@@ -280,8 +291,16 @@ class TrainLogger(object):
     def epoch_diagnostics(self, t_total, t_loading, t_optim, t_enforce, t_log):
         """Print diagnostics around the timing of one epoch."""
         t_remaining = t_total - sum([t_loading, t_optim, t_enforce, t_log])
-        print(
+        self._print(
             self._timing_str.format(
                 t_total, t_loading, t_optim, t_enforce, t_log, t_remaining
             )
         )
+
+    def _print(self, value):
+        """Print and ensure we are also printing to file."""
+        if not self._stdout_init and self._stdout_file is not None:
+            stdout = setup_stdout(self._stdout_file)
+            stdout.write(" " * 200, name=self.name)
+            self._stdout_init = True
+        print(value)
