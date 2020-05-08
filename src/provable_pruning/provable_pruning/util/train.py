@@ -457,7 +457,8 @@ def train_with_worker(
     )
 
     # wait for all processes to load the checkpoint
-    dist.barrier()
+    if is_distributed:
+        dist.barrier()
 
     # this may be non-zero in the case of rewinding ...
     if not found_checkpoint:
