@@ -10,9 +10,9 @@ network_names:
   PFPNetRand: PFPNet (rand)
   PFPNetTop: PFPNet (partial)
   SVDNet: SVD
-  SiPPNet: SiPP
-  SiPPNetHybrid: SiPPNetHybrid
-  SiPPNetRand: SiPPNetRand
+  SiPPNet: SiPPDet
+  SiPPNetHybrid: SiPPHybrid
+  SiPPNetRand: SiPPRand
   SnipNet: SNIP
   SoftNet: SoftNet
   ThiNet: ThiNet
@@ -25,13 +25,13 @@ network_colors:
   EllOneAndTwoNet: purple
   EllOneNet: blueviolet
   EllTwoNet: magenta
-  FilterThresNet: green
+  FilterThresNet: lawngreen
   FilterUniNet: "#708090"
-  PFPNet: blue
+  PFPNet: cornflowerblue
   PFPNetRand: black
   PFPNetTop: red
   SVDNet: green
-  SiPPNet: "#b4d8e7"
+  SiPPNet: orange
   SiPPNetHybrid: "#b4d8e7"
   SiPPNetRand: blue
   SnipNet: lightskyblue

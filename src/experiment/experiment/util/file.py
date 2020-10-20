@@ -60,7 +60,7 @@ def write_parameters(param, dir, file="parameters.yaml"):
 
 def set_mosek_path():
     """Set the MOSEK licence file path."""
-    os.environ["MOSEKLM_LICENSE_FILE"] = os.path.realpath("../misc/mosek.lic")
+    os.environ["MOSEKLM_LICENSE_FILE"] = os.path.realpath("misc/mosek.lic")
 
 
 def get_parameters(file, num_workers, id_worker):
@@ -284,13 +284,6 @@ def _generate_remaining_param(
     else:
         generated["datasetTest"] = param["network"]["dataset"]
 
-    # make sure test set is derived from training data set, otherwise this is
-    # not allowed
-    assert param["network"]["dataset"] in generated["datasetTest"] or (
-        param["network"]["dataset"] == "ImageNet"
-        and generated["datasetTest"] == "ObjectNet"
-    )
-
     # generate a markdown version of the param file
     generated["paramMd"] = _generate_param_markdown(param)
 
@@ -338,15 +331,9 @@ def _generate_remaining_param(
     # check for number of GPUs and apply linear scaling rule to training and
     # retraining parameters
     generated["numAvailableGPUs"] = torch.cuda.device_count()
-    scaling_factor = (
-        generated["numAvailableGPUs"] / param["training"]["numGPUs"]
-    )
 
     # in case we want to do GPU-wise scaling of learning rate at some point...
-    if False:
-        scaling_factor = max(1.0, scaling_factor)  # don't scale down
-    else:
-        scaling_factor = 1.0
+    scaling_factor = generated["numAvailableGPUs"]
 
     generated["training"]["learningRate"] *= scaling_factor
     generated["training"]["batchSize"] = int(

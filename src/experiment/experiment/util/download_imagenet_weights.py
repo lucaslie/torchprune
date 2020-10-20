@@ -38,10 +38,7 @@ def store_weights(param_file):
     )
     print(file_name)
     save_checkpoint(
-        file_name,
-        net_handle,
-        None,
-        param["generated"]["training"]["numEpochs"],
+        file_name, net_handle, param["generated"]["training"]["numEpochs"]
     )
 
 

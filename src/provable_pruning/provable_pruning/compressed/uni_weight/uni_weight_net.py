@@ -1,7 +1,7 @@
 """A module containing uniform weight pruning."""
 
 import torch
-from ..base import RandWeightPruner, RandWeightSparsifier, WeightNet
+from ..base import RandFeaturePruner, RandFeatureSparsifier, WeightNet
 
 from .uni_weight_allocator import UniAllocator
 
@@ -31,9 +31,9 @@ class UniNet(WeightNet):
     def _get_pruner(self, ell):
         weight = self.compressed_net.compressible_layers[ell].weight
         sensitivity = torch.ones(weight.shape).to(weight.device)
-        pruner = RandWeightPruner(weight, sensitivity)
+        pruner = RandFeaturePruner(weight, sensitivity)
         pruner.uniform = True
         return pruner
 
     def _get_sparsifier(self, pruner):
-        return RandWeightSparsifier(pruner)
+        return RandFeatureSparsifier(pruner)

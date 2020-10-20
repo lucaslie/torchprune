@@ -101,6 +101,7 @@ class Logger:
             "stats_comm": None,
             "layout": "[num_layers, num_nets, num_intervals, num_repetitions, "
             "num_algorithms, extra_dims]",
+            "dataset_train": None,
             "dataset_test": None,
         }
 
@@ -131,7 +132,8 @@ class Logger:
         # copy a copy of the parameters
         self.param = param
 
-        # test data set
+        # data sets
+        self.dataset_train = self.param["network"]["dataset"]
         self.dataset_test = self.param["generated"]["datasetTest"]
 
         # create results directory
@@ -186,8 +188,10 @@ class Logger:
                 self._num_intervals,
                 self._num_repetitions,
                 self._num_algorithms,
-                self.param["generated"]["retraining"]["numEpochs"]
-                - self.param["generated"]["retraining"]["startEpoch"],
+                max(
+                    self.param["generated"]["retraining"]["numEpochs"],
+                    self.param["generated"]["training"]["numEpochs"],
+                ),
             )
         )
         self.error_test = copy.deepcopy(self.error_train)
@@ -323,7 +327,6 @@ class Logger:
         if self.state_loaded:
             if not repurpose_dir:
                 self.save_global_state()
-            print("State is fully-loaded and stored.")
 
         # Save parameter file
         util_file.write_parameters(self.param, self._results_dir)
@@ -495,7 +498,11 @@ class Logger:
         self.save_custom_state(self._stats, self.dataset_test)
 
         # see if the stuff we store is also complete ...
-        return self._check_completeness(self._stats, self.responsibility)
+        self.state_loaded = self._check_completeness(
+            self._stats, self.responsibility
+        )
+
+        return self.state_loaded
 
     def save_custom_state(self, state_dict, tag):
         """Store custom dictionary as well."""
@@ -706,7 +713,7 @@ class Logger:
             "flo_best": flo_best,
         }
 
-    def generate_plots(self):
+    def generate_plots(self, store_figs=True):
         """Generate all the plots and save them."""
         # correct layout of samples_per_layer:
         # [numLayers, numNets, numIntervals, numRepetitions=1, numAlgorithms]
@@ -716,22 +723,26 @@ class Logger:
         samples_plot = np.squeeze(samples_plot, axis=3)
         samples_plot = np.swapaxes(samples_plot, 0, 1)
 
-        # normalize against overall sampling budget and convert to percentage
-        samples_plot /= np.sum(samples_plot, axis=1, keepdims=True) / 100.0
+        # get keep_ratio per layer
+        ref_idx = self.names.index("ReferenceNet")
+        kr_per_layer = (
+            self._samples[None, None, :, None]
+            * samples_plot
+            / samples_plot[:, :, :, ref_idx : ref_idx + 1]
+        )
 
         # grapher stats
-        ref_idx = self.names.index("ReferenceNet")
         num_layers = samples_plot.shape[1]
         num_layers = int(num_layers)
         layers = np.fromiter(range(num_layers), dtype=np.int) + 1
 
         # data for sample sizes per layer plot with standard convention
-        layers = np.tile(layers, (self._num_algorithms + 1, 1)).transpose()
+        layers = np.tile(layers, (self._num_algorithms, 1)).transpose()
         layers = layers[np.newaxis, :, np.newaxis, :]
 
         # grapher labels
-        y_label_error = "Test Accuracy (%)"
-        y_label_error5 = "Top 5 Test Accuracy (%)"
+        y_label_error = "Test Accuracy"
+        y_label_error5 = "Top 5 Test Accuracy"
         y_label_loss = "Test Loss"
 
         # grapher stuff
@@ -743,19 +754,13 @@ class Logger:
                 self.param["generated"]["datasetTest"].replace("_", "-"),
             ]
         )
-        title_samp = ", ".join(
-            [
-                self.param["network"]["name"],
-                self.param["network"]["dataset"].replace("_", "-"),
-            ]
-        )
 
         def _do_graphs(x_label, x_data, tag):
-            x_min = (1.0 - min(self._x_max, max(self._samples))) * 100.0
-            x_max = (1.0 - max(self._x_min, min(self._samples))) * 100.0
+            x_min = 1.0 - min(self._x_max, max(self._samples))
+            x_max = 1.0 - max(self._x_min, min(self._samples))
 
             def _flip_data(arr):
-                return (1.0 - arr) * 100.0
+                return 1.0 - arr
 
             # modify the xData to represent Prune Ratio...
             x_data = _flip_data(x_data)
@@ -769,9 +774,13 @@ class Logger:
 
             # grapher initialization + plotting
             grapher_error = Grapher(
+                x_values=x_data,
+                y_values=acc,
+                folder=self._plot_dir,
+                file_name=global_tag_test + "_acc_" + tag + ".pdf",
+                ref_idx=ref_idx,
                 x_min=x_min,
                 x_max=x_max,
-                logplot=False,
                 legend=legend,
                 colors=colors,
                 xlabel=x_label,
@@ -779,17 +788,17 @@ class Logger:
                 title=title,
             )
             img_err = grapher_error.graph(
-                x_values=x_data,
-                y_values=acc,
-                folder=self._plot_dir,
-                file_name=global_tag_test + "_acc_" + tag + ".pdf",
-                ref_idx=ref_idx,
+                percentage_x=True, percentage_y=True, store=store_figs
             )
 
             grapher_error5 = Grapher(
+                x_values=x_data,
+                y_values=acc5,
+                folder=self._plot_dir,
+                file_name=global_tag_test + "_acc5_" + tag + ".pdf",
+                ref_idx=ref_idx,
                 x_min=x_min,
                 x_max=x_max,
-                logplot=False,
                 legend=legend,
                 colors=colors,
                 xlabel=x_label,
@@ -797,75 +806,107 @@ class Logger:
                 title=title,
             )
             img_err5 = grapher_error5.graph(
-                x_values=x_data,
-                y_values=acc5,
-                folder=self._plot_dir,
-                file_name=global_tag_test + "_acc5_" + tag + ".pdf",
-                ref_idx=ref_idx,
+                percentage_x=True, percentage_y=True, store=store_figs
             )
 
             grapher_loss = Grapher(
+                x_values=x_data,
+                y_values=self.loss,
+                folder=self._plot_dir,
+                file_name=global_tag_test + "_loss_" + tag + ".pdf",
+                ref_idx=ref_idx,
                 x_min=x_min,
                 x_max=x_max,
-                logplot=False,
                 legend=legend,
                 colors=colors,
                 xlabel=x_label,
                 ylabel=y_label_loss,
                 title=title,
             )
-            img_loss = grapher_loss.graph(
-                x_values=x_data,
-                y_values=self.loss,
-                folder=self._plot_dir,
-                file_name=global_tag_test + "_loss_" + tag + ".pdf",
-                ref_idx=ref_idx,
-            )
+            img_loss = grapher_loss.graph(percentage_x=True, store=store_figs)
 
             # also write images to Tensorboard
-            self.log_image(
-                self._writer_general,
-                self.dataset_test + " Test Acc" + tag,
-                img_err,
-                0,
-            )
-            self.log_image(
-                self._writer_general,
-                self.dataset_test + "Top 5 Test Acc" + tag,
-                img_err5,
-                0,
-            )
-            self.log_image(
-                self._writer_general,
-                self.dataset_test + "Test Loss" + tag,
-                img_loss,
-                0,
-            )
+            if store_figs:
+                self.log_image(
+                    self._writer_general,
+                    self.dataset_test + " Test Acc" + tag,
+                    img_err,
+                    0,
+                )
+                self.log_image(
+                    self._writer_general,
+                    self.dataset_test + "Top 5 Test Acc" + tag,
+                    img_err5,
+                    0,
+                )
+                self.log_image(
+                    self._writer_general,
+                    self.dataset_test + "Test Loss" + tag,
+                    img_loss,
+                    0,
+                )
+
+            return grapher_error, grapher_error5, grapher_loss
+
+        # keep a list of figures around
+        graphers = []
 
         # do parameter and flop plots
-        _do_graphs("Prune Ratio (%)", self.sizes, "param")
-        _do_graphs("FLOPs Ratio (%)", self.flops, "flops")
+        graphers.extend(_do_graphs("Pruned Parameters", self.sizes, "param"))
+        graphers.extend(_do_graphs("Pruned FLOPs", self.flops, "flops"))
 
-        grapher_samp = Grapher(
-            x_min=np.min(layers),
-            x_max=np.max(layers),
-            logplot=False,
-            legend=legend,
-            colors=colors,
-            xlabel="Layer Index",
-            ylabel="Percentage of Total Budget",
-            title=title_samp,
-        )
-        img_samp = grapher_samp.graph(
-            x_values=layers,
-            y_values=samples_plot,
-            folder=self._plot_dir,
-            file_name=self.global_tag + "_samp.pdf",
-            int_ticks=True,
-            ref_idx=ref_idx,
+        # do some layer-wise graphs
+        title_layer = ", ".join(
+            [
+                self.param["network"]["name"],
+                self.param["network"]["dataset"].replace("_", "-"),
+            ]
         )
 
-        self.log_image(self._writer_general, "Samples", img_samp, 0)
+        def _do_layer_graph(x_label, y_label, y_data, tag, ref_idx=None):
+            grapher_layer = Grapher(
+                x_values=layers,
+                y_values=y_data,
+                folder=self._plot_dir,
+                file_name=self.global_tag + f"_{tag}.pdf",
+                ref_idx=ref_idx,
+                x_min=np.min(layers),
+                x_max=np.max(layers),
+                legend=legend,
+                colors=colors,
+                xlabel=x_label,
+                ylabel=y_label,
+                title=title_layer,
+            )
+            img_layer = grapher_layer.graph_histo(
+                show_delta=ref_idx is not None, store=store_figs
+            )
+
+            if store_figs:
+                self.log_image(self._writer_general, tag, img_layer, 0)
+
+            return grapher_layer
+
+        graphers.append(
+            _do_layer_graph(
+                "Budget Allocation over Layers",
+                "Percentage of Budget",
+                samples_plot,
+                "samples",
+            )
+        )
+
+        graphers.append(
+            _do_layer_graph(
+                "Prune Ratio per Layer",
+                "Prune Ratio",
+                1 - kr_per_layer,
+                "layer_pr",
+                ref_idx,
+            )
+        )
+
+        return graphers
 
     def get_train_logger(self):
         """Get the pp_logging.TrainLogger instance."""
@@ -899,31 +940,46 @@ class Logger:
         full_tag = self.global_tag + "/" + tag
         pp_logging.log_image(writer, full_tag, image, step)
 
-    def store_test_stats(
-        self,
-        loss_single,
-        acc1_single,
-        acc5_single,
-        size_compressed,
-        flops_compressed,
-    ):
+    def store_test_stats(self, size, flops, test_handle):
         """Store the test results for the currently compressed network."""
-        if self.a_idx == self.names.index("ReferenceNet"):
-            idx_tuple = np.s_[self.n_idx, :, :, self.a_idx]
-        else:
-            idx_tuple = np.s_[self.n_idx, self.s_idx, self.r_idx, self.a_idx]
+        idx_tuple = np.s_[self.n_idx, self.s_idx, self.r_idx, self.a_idx]
 
         # store sizes and flops
-        self.sizes[idx_tuple] = size_compressed
-        self.flops[idx_tuple] = flops_compressed
+        self.sizes[idx_tuple] = size
+        self.flops[idx_tuple] = flops
+
+        # check if we should also store full test stats now
+        if not self._store_test_stats_now():
+            return
+
+        if self.a_idx == self.names.index("ReferenceNet"):
+            idx_tuple = np.s_[self.n_idx, :, :, self.a_idx]
+
+        # see if we can store test results from full test results, otherwise
+        # compute them ourselves
+        idx_e = self.param["generated"]["retraining"]["numEpochs"] - 1
+        idx_tuple_e = idx_tuple + (idx_e,)
+        if (
+            np.all(self.loss_test[idx_tuple_e] != 0.0)
+            and np.all(self.error_test[idx_tuple_e] != 0.0)
+            and np.all(self.error5_test[idx_tuple_e] != 0.0)
+            and self.dataset_test == self.dataset_train
+        ):
+            loss = self.loss_test[idx_tuple_e]
+            err1 = self.error_test[idx_tuple_e]
+            err5 = self.error5_test[idx_tuple_e]
+        else:
+            loss, acc1, acc5 = test_handle()
+            loss = float(loss)
+            err1 = 1.0 - acc1
+            err5 = 1.0 - acc5
 
         # store final test results
-        if self.store_test_stats_now():
-            self.error[idx_tuple] = 1.0 - acc1_single
-            self.error5[idx_tuple] = 1.0 - acc5_single
-            self.loss[idx_tuple] = float(loss_single)
+        self.loss[idx_tuple] = loss
+        self.error[idx_tuple] = err1
+        self.error5[idx_tuple] = err5
 
-    def store_test_stats_now(self):
+    def _store_test_stats_now(self):
         """Check whether we need to store test stats in this iteration."""
         if self.a_idx == self.names.index("ReferenceNet") and (
             self.s_idx != 0 or self.r_idx != 0
@@ -934,10 +990,6 @@ class Logger:
 
     def store_training_stats(self, is_retraining=True):
         """Store the stats currently stored in the train logger."""
-        # check if there is something to log
-        if len(self._train_logger.test_loss) < 1:
-            return
-
         # check if we can log to the correct algorithm
         if not is_retraining:
             a_idx = self.names.index("ReferenceNet")
@@ -946,62 +998,45 @@ class Logger:
         else:
             return
 
-        def _smooth_and_store(arr, val):
-            """Smoothen the data, then store it correctly."""
-            # store a few lengths
-            len_desired = arr.shape[-1]
-            len_val = len(val)
+        def _store(arr_loss, arr_error, arr_error5, tracker):
+            """Store the data from the tracker."""
+            if not tracker.contains_data():
+                return
 
-            # next use a moving average to smooth the values
-            # we use a scaled-up smoothing factor to account for len_val
-            len_ma = 4
-            len_ma = int(len_ma * min(1, len_val / len_desired))
+            # retrieve data
+            epochs, loss, acc1, acc5, _ = tracker.get()
+            num_epochs = len(epochs)
 
-            # padd the values now and smooth them
-            val_smooth = np.concatenate(
-                (
-                    np.full(len_ma // 2, val[0]),
-                    val,
-                    np.full((len_ma - 1) // 2, val[-1]),
-                )
-            )
-            val_smooth = np.convolve(
-                val_smooth, np.full(len_ma, 1 / len_ma), "valid",
-            )
-
-            # sample it to the correct length with linear interpolation
-            val_smooth = np.interp(
-                np.linspace(0, len_desired - 1, len_desired),
-                np.linspace(0, len_desired - 1, len_val),
-                val_smooth,
-            )
+            # don't store if it can't hold the values
+            # pylint: disable=E1136
+            if num_epochs > self.error_train.shape[-1]:
+                return
 
             # now store it
-            if is_retraining:
-                arr[self.n_idx, self.s_idx, self.r_idx, a_idx] = val_smooth
-            else:
-                arr[self.n_idx, :, :, a_idx] = val_smooth[None, None]
+            def _store_one(arr, val):
+                if is_retraining:
+                    arr[
+                        self.n_idx, self.s_idx, self.r_idx, a_idx, :num_epochs
+                    ] = val
+                else:
+                    arr[self.n_idx, :, :, a_idx, :num_epochs] = val[None, None]
 
-        # store full train statistics
-        _smooth_and_store(
-            self.error_train, 1.0 - np.array(self._train_logger.train_acc1)
-        )
-        _smooth_and_store(
-            self.error5_train, 1.0 - np.array(self._train_logger.train_acc5)
-        )
-        _smooth_and_store(
-            self.loss_train, np.array(self._train_logger.train_loss)
-        )
+            _store_one(arr_loss, loss)
+            _store_one(arr_error, 1.0 - acc1)
+            _store_one(arr_error5, 1.0 - acc5)
 
         # store full test statistics
-        _smooth_and_store(
-            self.error_test, 1.0 - np.array(self._train_logger.test_acc1)
+        _store(
+            self.loss_train,
+            self.error_train,
+            self.error5_train,
+            self._train_logger.tracker_train,
         )
-        _smooth_and_store(
-            self.error5_test, 1.0 - np.array(self._train_logger.test_acc5)
-        )
-        _smooth_and_store(
-            self.loss_test, np.array(self._train_logger.test_loss)
+        _store(
+            self.loss_test,
+            self.error_test,
+            self.error5_test,
+            self._train_logger.tracker_test,
         )
 
     def run_diagnostics_init(self):

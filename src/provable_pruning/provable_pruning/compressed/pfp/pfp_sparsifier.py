@@ -1,13 +1,9 @@
 """Module containing (fake) sparsifiers for PFP."""
 
-from ..base import (
-    BaseSparsifier,
-    RandFilterSparsifier,
-    DetFilterSparsifier,
-)
+from ..base import BaseSparsifier, FilterSparsifier
 
 
-class PFPRandSparsifier(RandFilterSparsifier):
+class PFPRandSparsifier(FilterSparsifier):
     """The fake sparsifier for random PFPRand."""
 
     @property
@@ -19,7 +15,7 @@ class PFPRandSparsifier(RandFilterSparsifier):
         super().__init__(pruner, out_mode=False)
 
 
-class PFPSparsifier(DetFilterSparsifier):
+class PFPSparsifier(FilterSparsifier):
     """The fake sparsifier for deterministic PFP."""
 
     def __init__(self, pruner):

@@ -28,11 +28,6 @@ experiments:
 
   retrainIterations: -1
 
-  sensLogging: False
-
-  useRamTest: False
-  useRamTrain: False
-
 coresets:
   deltaS: 1.0e-32 # failure prob to compute empirical sensitivity
   deltaBest: 1.0e-11 # 1.0e-4 previously

@@ -14,7 +14,6 @@ training:
 
   batchSize: 16
   learningRate: 0.01
-  numGPUs: 2
 
   lRmilestones: [30, 60, 80]
   lRgamma: 0.1

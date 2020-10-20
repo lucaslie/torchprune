@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 from ..uni_filter.uni_filter_allocator import FilterUniAllocator
-from ..base import DetFilterPruner, DetFilterSparsifier, FilterNet
+from ..base import DetFilterPruner, FilterSparsifier, FilterNet
 
 from .thi_tracker import ThiTracker
 
@@ -39,7 +39,7 @@ class ThiNet(FilterNet):
         return pruner
 
     def _get_sparsifier(self, pruner):
-        return DetFilterSparsifier(pruner, self.out_mode)
+        return FilterSparsifier(pruner, self.out_mode)
 
     def _get_allocator(self):
         return FilterUniAllocator(self.compressed_net, self.out_mode)

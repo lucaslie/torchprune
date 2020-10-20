@@ -6,15 +6,14 @@ from .base_net import BaseCompressedNet, CompressedNet, WeightNet, FilterNet
 from .base_pruner import (
     BasePruner,
     RandFilterPruner,
-    RandWeightPruner,
-    DetWeightPruner,
+    RandFeaturePruner,
+    DetFeaturePruner,
     DetFilterPruner,
 )
 from .base_sparsifier import (
     BaseSparsifier,
-    RandWeightSparsifier,
-    RandFilterSparsifier,
-    DetWeightSparsifier,
-    DetFilterSparsifier,
+    RandFeatureSparsifier,
+    DetFeatureSparsifier,
+    FilterSparsifier,
 )
 from .base_tracker import BaseTracker

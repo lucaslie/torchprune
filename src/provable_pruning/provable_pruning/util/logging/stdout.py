@@ -30,6 +30,10 @@ class _StdoutLogger(object):
             msg (str): string to be printed
             name (str, optional): current prefix for message. Defaults to None.
         """
+        # double check that sys.stdout is pointing to this instance
+        if sys.stdout != self:
+            sys.stdout = self
+
         # remove any type of EOL characters at the end of the message
         msg = re.sub("[\\n|\\r|\\b]*$", "", str(msg))
 

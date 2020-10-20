@@ -1,7 +1,7 @@
 """Module containing the classic weight thresholding pruning heuristic."""
 
 import torch.nn as nn
-from ..base import DetWeightSparsifier, DetWeightPruner, WeightNet
+from ..base import DetFeatureSparsifier, DetFeaturePruner, WeightNet
 
 from .thres_weight_tracker import ThresTracker
 from .thres_weight_allocator import ThresAllocator
@@ -42,9 +42,9 @@ class ThresNet(WeightNet):
 
     def _get_pruner(self, ell):
         module = self.compressed_net.compressible_layers[ell]
-        return DetWeightPruner(
+        return DetFeaturePruner(
             module.weight, self._trackers_weight[ell].sensitivity
         )
 
     def _get_sparsifier(self, pruner):
-        return DetWeightSparsifier(pruner)
+        return DetFeatureSparsifier(pruner)

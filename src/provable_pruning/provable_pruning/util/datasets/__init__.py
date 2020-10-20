@@ -11,7 +11,4 @@ from torchvision.datasets import (
 
 from .driving import Driving
 from .imagenet import ImageNet
-from .imagenet_c import *  # noqa: F403,F401
-from .objectnet import ObjectNet
-from .cifar10 import *  # noqa: F403,F401
 from .dds import DownloadDataset

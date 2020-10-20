@@ -41,38 +41,60 @@ class SimpleSparsifier(BaseSparsifier):
         raise NotImplementedError
 
     @abstractmethod
-    def _reweigh(self, counts, num_samples_normalized_f, probs_div_f):
+    def _reweigh(self, counts, num_samples, probs_div):
         raise NotImplementedError(
             "The base class does not implement this " "method."
         )
 
 
 class RandSparsifier(SimpleSparsifier):
-    """The partial implementation for the random SimpleSparsifier."""
+    """The partial implementation for the random sparsification."""
 
-    def _reweigh(self, counts, num_samples_normalized_f, probs_div_f):
-        gammas_f = (
-            counts.float() / num_samples_normalized_f.float() / probs_div_f
-        )
-        return gammas_f
+    @property
+    def _do_reweighing(self):
+        return True
+
+    def _reweigh(self, counts, num_samples, probs_div):
+        gammas = counts.float() / num_samples.float() / probs_div
+        return gammas
+
+    def _generate_counts(self, num_samples, probs):
+        distribution = Multinomial(num_samples.item(), probs.view(-1))
+        counts = distribution.sample()
+        return counts.view(probs.shape)
 
 
 class DetSparsifier(SimpleSparsifier):
-    """The partial implementation for the deterministic SimpleSparsifier."""
+    """The partial implementation for the deterministic sparsification."""
 
-    def _reweigh(self, counts, num_samples_normalized_f, probs_div_f):
-        sens_sum = max(0, 1 - torch.sum(probs_div_f[counts]).item())
+    @property
+    def _do_reweighing(self):
+        return False
+
+    def _reweigh(self, counts, num_samples, probs_div):
+        sens_sum = max(0, 1 - torch.sum(probs_div[counts]).item())
         kappa = 0
         if sens_sum < 1:
             kappa = sens_sum / (1 - sens_sum)
         # Under the i.i.d. assumption this works, otherwise no.
-        gammas_f = (1 + kappa) * counts.float()
+        gammas = (1 + kappa) * counts.float()
 
-        return gammas_f
+        return gammas
+
+    def _generate_counts(self, num_samples, probs):
+        mask = torch.zeros_like(probs, dtype=torch.bool)
+        numel = probs.numel()
+        num_samples = int(np.clip(1, int(num_samples), numel))
+        idx_top = np.argpartition(probs.view(-1).cpu().numpy(), -num_samples)[
+            -num_samples:
+        ]
+        mask.view(-1)[idx_top] = True
+
+        return mask
 
 
-class WeightSparsifier(SimpleSparsifier):
-    """The partial implementation for the weight-based SimpleSparsifier."""
+class FeatureSparsifier(SimpleSparsifier):
+    """The partial implementation for the feature-wise sparsifier."""
 
     def __init__(self, pruner):
         """Initialize the sparsifier from the pruner of the same layer."""
@@ -85,7 +107,7 @@ class WeightSparsifier(SimpleSparsifier):
         )
 
     def sparsify(self, num_samples):
-        """Sparsify the edges of the associated neurons with num_samples."""
+        """Sparsify the edges of the associated feature with num_samples."""
         # short notation
         weight_original = self._tensor
         probs = self._probability
@@ -121,8 +143,24 @@ class WeightSparsifier(SimpleSparsifier):
         return gammas * weight_original
 
 
+class RandFeatureSparsifier(RandSparsifier, FeatureSparsifier):
+    """A sparsifier for random weight sparsification per feature."""
+
+
+class DetFeatureSparsifier(DetSparsifier, FeatureSparsifier):
+    """The sparsifier for deterministic weight sparsification per feature."""
+
+
 class FilterSparsifier(SimpleSparsifier):
-    """The partial implementation for the filter-based SimpleSparsifier."""
+    """The implementation for the fake sparsifier for filter pruning."""
+
+    @property
+    def _do_reweighing(self):
+        return False
+
+    def _reweigh(self, counts, num_samples, probs_div):
+        gammas = counts.float() / num_samples.float() / probs_div
+        return gammas
 
     def __init__(self, pruner, out_mode):
         """Initialize the sparsifier from the pruner of the same layer."""
@@ -156,53 +194,3 @@ class FilterSparsifier(SimpleSparsifier):
             )
         ).view_as(weight_original)
         return weight_hat
-
-
-class RandWeightSparsifier(WeightSparsifier, RandSparsifier):
-    """A sparsifier for random weight sparsification."""
-
-    @property
-    def _do_reweighing(self):
-        return True
-
-    def _generate_counts(self, num_samples_f, probs_f):
-        distribution = Multinomial(num_samples_f.item(), probs_f.view(-1))
-
-        counts = distribution.sample()
-
-        return counts.view(probs_f.shape)
-
-
-class RandFilterSparsifier(FilterSparsifier, RandSparsifier):
-    """A sparsifier for random filter sparsification (fake)."""
-
-    @property
-    def _do_reweighing(self):
-        return False
-
-
-class DetFilterSparsifier(FilterSparsifier, DetSparsifier):
-    """The fake sparsifier for filter thresholding."""
-
-    @property
-    def _do_reweighing(self):
-        return False
-
-
-class DetWeightSparsifier(WeightSparsifier, DetSparsifier):
-    """The sparsifier for weight thresholding."""
-
-    @property
-    def _do_reweighing(self):
-        return False
-
-    def _generate_counts(self, num_samples_f, probs_f):
-        mask = torch.zeros_like(probs_f, dtype=torch.bool)
-        numel = probs_f.numel()
-        num_samples_f = int(np.clip(1, int(num_samples_f), numel))
-        idx_top = np.argpartition(
-            probs_f.view(-1).cpu().numpy(), -num_samples_f
-        )[-num_samples_f:]
-        mask.view(-1)[idx_top] = True
-
-        return mask

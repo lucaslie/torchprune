@@ -35,11 +35,6 @@ experiments:
       minVal: 0.10
       numIntervals: 6
 
-  sensLogging: False
-
-  useRamTest: False
-  useRamTrain: False
-
 coresets:
   deltaS: 1.0e-16 # failure prob to compute empirical sensitivity
   deltaBest: 1.0e-11 # 1.0e-4 previously

@@ -6,14 +6,7 @@ import torch
 
 
 class BaseAllocator(nn.Module, ABC):
-    """Base Alloctor implementation containing basic functionality.
-
-    NAMING CONVENTION FOR CHILD CLASSES:
-        * {D, H, R, U} = {'Deterministic', 'Hybrid', 'Random', 'Uniform'}
-        * {W, F} = {'Weight-based', 'Filter-based'}
-        * {S, T, None} = {'Sensitivity-based', 'Thresholding-based', 'Generic'}
-
-    """
+    """Base Alloctor implementation containing basic functionality."""
 
     def __init__(self, **kwargs):
         """Initialize with a flexible dictionary of kwargs."""

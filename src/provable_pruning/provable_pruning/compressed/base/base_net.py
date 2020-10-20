@@ -197,6 +197,9 @@ class CompressedNet(BaseCompressedNet):
         # compute "effective" sample ratio for compressible part
         kr_compressible = float(total_budget) / float(compressible_size)
 
+        # make sure effective sample ratio is still at least 0.1%
+        kr_compressible = max(kr_compressible, 1e-3)
+
         # allocate with "effective" sample ratio
         self.allocator._allocate_budget(kr_compressible, size)
 
@@ -211,9 +214,7 @@ class CompressedNet(BaseCompressedNet):
             # generate sparsification
             size_pruned = self.allocator.get_num_samples(ell)
             num_samples = pruner.prune(size_pruned)
-            weight_hat = self._generate_sparsification(
-                num_samples, ell, sparsifier
-            )
+            weight_hat = sparsifier.sparsify(num_samples)
 
             if isinstance(weight_hat, tuple):
                 # set compression
@@ -233,10 +234,6 @@ class CompressedNet(BaseCompressedNet):
 
         # return stats about compression here
         return budget_per_layer
-
-    def _generate_sparsification(self, num_samples, ell, sparsifier):
-        """Generate sparsification for given sample size and layer."""
-        return sparsifier.sparsify(num_samples)
 
     @abstractmethod
     def _set_compression(self, ell, weight_hat, bias=None):
@@ -261,17 +258,17 @@ class CompressedNet(BaseCompressedNet):
     @abstractmethod
     def _get_sparsifier(self, pruner):
         """Get sparsifier corresponding to desired pruner."""
-        return NotImplementedError
+        raise NotImplementedError
 
     @abstractmethod
     def _get_pruner(self, ell):
         """Create and return pruner to parent class (generic interface)."""
-        return NotImplementedError
+        raise NotImplementedError
 
     @abstractmethod
     def _get_allocator(self):
         """Create and return allocator to parent class (generic interface)."""
-        return NotImplementedError
+        raise NotImplementedError
 
     @abstractmethod
     def _finish_preprocessing(self):

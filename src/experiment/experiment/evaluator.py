@@ -630,14 +630,10 @@ class Evaluator(object):
         size_rel = compressed_net.size() / self._size_original
         flops_rel = compressed_net.flops() / self._flops_original
 
-        # test network (only if needed)
-        if self._logger.store_test_stats_now():
-            loss, acc1, acc5 = self._net_trainer.test(compressed_net)
-        else:
-            loss, acc1, acc5 = None, None, None
-
         # store them
-        self._logger.store_test_stats(loss, acc1, acc5, size_rel, flops_rel)
+        self._logger.store_test_stats(
+            size_rel, flops_rel, lambda: self._net_trainer.test(compressed_net)
+        )
 
     def _print_loader_msg(self):
         """Print information about the loader."""

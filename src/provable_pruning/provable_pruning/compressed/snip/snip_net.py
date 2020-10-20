@@ -6,7 +6,7 @@ https://arxiv.org/abs/1810.02340
 
 import torch
 import torch.nn as nn
-from ..base import DetWeightSparsifier, DetWeightPruner, WeightNet
+from ..base import DetFeatureSparsifier, DetFeaturePruner, WeightNet
 from ..thres_weight.thres_weight_allocator import ThresAllocator
 
 from .snip_tracker import SnipTracker
@@ -65,7 +65,7 @@ class SnipNet(WeightNet):
 
     def _get_pruner(self, ell):
         module = self.compressed_net.compressible_layers[ell]
-        return DetWeightPruner(module.weight, self._trackers[ell].sensitivity)
+        return DetFeaturePruner(module.weight, self._trackers[ell].sensitivity)
 
     def _get_sparsifier(self, pruner):
-        return DetWeightSparsifier(pruner)
+        return DetFeatureSparsifier(pruner)

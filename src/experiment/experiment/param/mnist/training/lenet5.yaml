@@ -11,8 +11,6 @@ training:
   warmup: 0
   cooldown: 0
 
-  numGPUs: 1
-
   numEpochs: 40
   batchSize: 64
   learningRate: 0.01

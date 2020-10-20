@@ -13,8 +13,6 @@ training:
   warmup: 10
   cooldown: 0
 
-  numGPUs: 2
-
   batchSize: 256
   learningRate: 0.05
   lRmilestones: [30, 60, 90, 120, 150, 180, 210, 240, 270, 300]

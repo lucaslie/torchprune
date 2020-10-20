@@ -191,8 +191,12 @@ class SiPPRandAllocator(BaseAllocator):
         idx = range(self._offsets[ell][0], self._offsets[ell][1])
         x_var, error = self._get_f_error(idx)
 
-        # assign value to variables
-        x_var.project_and_assign(num_samples.cpu().view(-1).numpy())
+        # assign value to variables (and do some sanity check on num_samples)
+        num_samples_np = num_samples.cpu().view(-1).numpy()
+        num_samples_np[
+            np.logical_or(num_samples_np < 1, ~np.isfinite(num_samples_np))
+        ] = 1
+        x_var.project_and_assign(num_samples_np)
 
         # compute error
         error = error.value

@@ -32,14 +32,9 @@ experiments:
       numIntervals: 12
     - type: "linear"
       maxVal: 0.31
-      minVal: 0.10
-      numIntervals: 6
+      minVal: 0.184
+      numIntervals: 4
   retrainIterations: -1
-
-  sensLogging: False
-
-  useRamTest: False
-  useRamTrain: False
 
 coresets:
   deltaS: 1.0e-16 # failure prob to compute empirical sensitivity

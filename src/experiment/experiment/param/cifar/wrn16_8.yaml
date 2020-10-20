@@ -14,6 +14,8 @@ experiments:
     - "PFPNet"
     - "FilterThresNet"
     - "SiPPNet"
+    # - "SiPPNetRand"
+    # - "SiPPNetHybrid"
     - "ThresNet"
     - "SnipNet"
   mode: "cascade"
@@ -40,11 +42,6 @@ experiments:
       numIntervals: 9
 
   retrainIterations: 23
-
-  sensLogging: False
-
-  useRamTest: False
-  useRamTrain: False
 
 coresets:
   deltaS: 1.0e-16 # failure prob to compute empirical sensitivity

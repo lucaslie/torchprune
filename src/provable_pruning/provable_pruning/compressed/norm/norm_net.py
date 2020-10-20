@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import torch
 
 from ..uni_weight.uni_weight_allocator import UniAllocator
-from ..base import WeightNet, RandWeightPruner, RandWeightSparsifier
+from ..base import WeightNet, RandFeaturePruner, RandFeatureSparsifier
 
 
 class NormNet(WeightNet, ABC):
@@ -43,11 +43,11 @@ class NormNet(WeightNet, ABC):
             )
         else:
             sensitivity = torch.abs(weight) ** self._p_norm
-        pruner = RandWeightPruner(weight, sensitivity)
+        pruner = RandFeaturePruner(weight, sensitivity)
         return pruner
 
     def _get_sparsifier(self, pruner):
-        return RandWeightSparsifier(pruner)
+        return RandFeatureSparsifier(pruner)
 
 
 class EllOneNet(NormNet):

@@ -186,7 +186,7 @@ class NetTrainer(object):
             net, n_idx, True, keep_ratio, s_idx, r_idx, False, True
         )
 
-        save_checkpoint(file_name_net, net, None, compress_ratio)
+        save_checkpoint(file_name_net, net, compress_ratio)
 
     def load_compression(
         self, net, n_idx, keep_ratio, s_idx, r_idx, compress_ratio
@@ -282,11 +282,6 @@ class NetTrainer(object):
             True,
         )
 
-        # check if network is already pretrained and done. then we can return
-        found_trained_net, _ = load_checkpoint(
-            file_name_net, net, loc=str(next(net.parameters()).device)
-        )
-
         # set up the train logger
         # doing this before returning with pre-trained net is important so that
         # we don't have old data stored in the train logger.
@@ -300,6 +295,14 @@ class NetTrainer(object):
                 r_idx=r_idx,
                 s_idx=s_idx,
             )
+
+        # check if network is already pretrained and done. then we can return
+        found_trained_net, _ = load_checkpoint(
+            file_name_net,
+            net,
+            train_logger=self._train_logger,
+            loc=str(next(net.parameters()).device),
+        )
 
         if found_trained_net:
             print("Loading pre-trained network...")
@@ -351,11 +354,14 @@ class NetTrainer(object):
         load_checkpoint(
             file_name_check,
             net_handle,
+            train_logger=self._train_logger,
             loc=str(next(net_handle.parameters()).device),
         )
 
         # store full net as well
-        save_checkpoint(file_name_net, net, None, params["numEpochs"])
+        save_checkpoint(
+            file_name_net, net, params["numEpochs"], self._train_logger
+        )
 
         # delete checkpoint to save storage
         delete_checkpoint(file_name_check)
@@ -453,7 +459,7 @@ def train_with_worker(
 
     # Load the checkpoint if available
     found_checkpoint, start_epoch = load_checkpoint(
-        file_name_checkpoint, net_handle, optimizer, loc
+        file_name_checkpoint, net_handle, train_logger, optimizer, loc
     )
 
     # wait for all processes to load the checkpoint
@@ -465,16 +471,19 @@ def train_with_worker(
         start_epoch = params["startEpoch"]
 
     # set up learning rate scheduler
-    lr_scheduler = get_lr_scheduler(
-        steps_per_epoch=len(train_loader),
-        warmup=params["warmup"],
-        cooldown=params["cooldown"],
-        learning_rate=params["learningRate"],
-        lr_milestones=params["lRmilestones"],
-        lr_gamma=params["lRgamma"],
-        momentum=params["momentum"],
-        momentum_delta=params["momentumDelta"],
-    )
+    try:
+        lr_scheduler = get_lr_scheduler(
+            steps_per_epoch=len(train_loader),
+            warmup=params["warmup"],
+            cooldown=params["cooldown"],
+            learning_rate=params["learningRate"],
+            lr_milestones=params["lRmilestones"],
+            lr_gamma=params["lRgamma"],
+            momentum=params["momentum"],
+            momentum_delta=params["momentumDelta"],
+        )
+    except KeyError:
+        lr_scheduler = None
 
     # make it faster
     if not is_cpu:
@@ -484,7 +493,13 @@ def train_with_worker(
     def store_checkpoints(epoch):
         # save checkpoint at the end of every epoch with 0 worker
         if gpu_id == 0:
-            save_checkpoint(file_name_checkpoint, net_handle, optimizer, epoch)
+            save_checkpoint(
+                file_name_checkpoint,
+                net_handle,
+                epoch,
+                train_logger,
+                optimizer,
+            )
 
         # check whether we should store rewind checkpoint
         if (
@@ -492,7 +507,9 @@ def train_with_worker(
             and not retraining
             and params["retrainStartEpoch"] == epoch
         ):
-            save_checkpoint(file_name_rewind, net_handle, optimizer, epoch)
+            save_checkpoint(
+                file_name_rewind, net_handle, epoch, train_logger, optimizer
+            )
 
     # do the distributed training
     t_training = -time.time()
@@ -569,7 +586,8 @@ def _train_one_epoch(
     for i, (images, targets) in enumerate(train_loader):
 
         # adjust the learning rate
-        lr_scheduler(optimizer, epoch, i)
+        if lr_scheduler:
+            lr_scheduler(optimizer, epoch, i)
 
         # convert to CUDA tensor if desired
         t_loading -= time.time()
@@ -772,14 +790,20 @@ def get_accuracies(output, target, topk_values=(1,)):
         return res
 
 
-def save_checkpoint(file_name, net, optimizer, epoch):
+def save_checkpoint(file_name, net, epoch, train_logger=None, optimizer=None):
     """Save checkpoint of network."""
     # Populate checkpoint
     checkpoint = {
         "net": net.state_dict(),
         "optimizer": None if optimizer is None else optimizer.state_dict(),
         "epoch": epoch,
+        "tracker_train": None,
+        "tracker_test": None,
     }
+    if train_logger is not None:
+        checkpoint["tracker_train"] = train_logger.tracker_train.get()
+        checkpoint["tracker_test"] = train_logger.tracker_test.get()
+
     # create directory if it doesn't exist yet
     file_dir = os.path.split(file_name)[0]
     if not os.path.isdir(file_dir):
@@ -795,20 +819,32 @@ def delete_checkpoint(file_name):
 
 
 def load_checkpoint(
-    file_name, net, optimizer=None, loc=None, epoch_desired=None
+    file_name,
+    net,
+    train_logger=None,
+    optimizer=None,
+    loc=None,
+    epoch_desired=None,
 ):
     """Load checkpoint into provided net and optimizer."""
     epoch = 0
     found_checkpoint = os.path.isfile(file_name)
 
+    def _check_tracker(chkpt, key):
+        return train_logger is not None and key in chkpt.keys() and chkpt[key]
+
     if found_checkpoint:
-        checkpoint = torch.load(file_name, map_location=loc)
-        epoch = checkpoint["epoch"]
+        chkpt = torch.load(file_name, map_location=loc)
+        epoch = chkpt["epoch"]
         if epoch_desired is None or epoch_desired == epoch:
             # strict=False ignores keys in the checkpoint that don't exist in
             # the net
-            net.load_state_dict(checkpoint["net"], strict=False)
+            net.load_state_dict(chkpt["net"], strict=False)
             if optimizer is not None:
-                optimizer.load_state_dict(checkpoint["optimizer"])
+                optimizer.load_state_dict(chkpt["optimizer"])
+            if _check_tracker(chkpt, "tracker_train"):
+                train_logger.tracker_train.set(*chkpt["tracker_train"])
+            if _check_tracker(chkpt, "tracker_test"):
+                train_logger.tracker_test.set(*chkpt["tracker_test"])
 
     return found_checkpoint, epoch

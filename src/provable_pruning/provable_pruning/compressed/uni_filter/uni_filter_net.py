@@ -1,7 +1,7 @@
 """Module implements filter thresholding but with uniform sampling."""
 
 import torch
-from ..base import FilterNet, RandFilterSparsifier, DetFilterPruner
+from ..base import FilterNet, FilterSparsifier, DetFilterPruner
 
 from .uni_filter_allocator import FilterUniAllocator
 
@@ -51,4 +51,4 @@ class FilterUniNet(FilterNet):
         return pruner
 
     def _get_sparsifier(self, pruner):
-        return RandFilterSparsifier(pruner, self.out_mode)
+        return FilterSparsifier(pruner, self.out_mode)

@@ -83,7 +83,7 @@ class RandPruner(BasePruner, ABC):
         self.probability_div.masked_fill_(self.probability_div <= eps, np.Inf)
 
 
-class RandWeightPruner(RandPruner):
+class RandFeaturePruner(RandPruner):
     """Pruner for any randomized, weight-based pruning method."""
 
     def __init__(self, tensor, sensitivity, **kwargs):
@@ -134,7 +134,7 @@ class RandFilterPruner(RandPruner):
         return num_samples
 
 
-class DetWeightPruner(DetPruner):
+class DetFeaturePruner(DetPruner):
     """Pruner for classic weight thresholding heuristic."""
 
     def prune(self, size_pruned):
@@ -159,3 +159,16 @@ class DetFilterPruner(DetPruner):
         num_samples = mask.view(mask.shape[0], -1).sum(dim=-1)
 
         return num_samples
+
+
+class TensorPruner(RandPruner):
+    """A fake pruner for tensor-based sparsification."""
+
+    @property
+    def _start_dim(self):
+        return 0
+
+    def prune(self, size_pruned):
+        """Just return the size given (by the allocator)."""
+        # TODO: should we adapt sample size here?
+        return torch.sum(size_pruned)

@@ -2,10 +2,86 @@
 import os
 import time
 import math
+import copy
 
+import numpy as np
 from torch.utils import tensorboard as tb
+
 from .stdout import setup_stdout
 from .tensorboard import log_scalar
+
+
+class StatTracker(object):
+    """A class to track stats over multiple training epochs."""
+
+    def __init__(self, num_epochs=0):
+        """Initialize with the expected number of epochs."""
+        # the statistics
+        self._epochs = None
+        self._loss = None
+        self._acc1 = None
+        self._acc5 = None
+
+        # internal tracker for last epoch
+        self._epoch = None
+
+        self.reset(num_epochs)
+
+    def reset(self, num_epochs):
+        """Reset the tracked statistics."""
+        self._epochs = np.arange(num_epochs)
+        self._loss = np.zeros(num_epochs)
+        self._acc1 = np.zeros(num_epochs)
+        self._acc5 = np.zeros(num_epochs)
+        self._epoch = -1.0
+
+    def update(self, epoch, loss, acc1, acc5):
+        """Update the stats with the latest results."""
+        # get the index of the epoch
+        idx_e = int(epoch)
+
+        # check if we have entered a new epoch
+        if idx_e != int(self._epoch):
+            self._epoch = idx_e
+
+        # update the results with a running average
+        def _update_one_stat(stat, stat_update):
+            weight_total = epoch - idx_e
+            if weight_total:
+                alpha = (self._epoch - idx_e) / weight_total
+            else:
+                alpha = 0.0
+            stat[idx_e] *= alpha
+            stat[idx_e] += (1.0 - alpha) * stat_update
+
+        _update_one_stat(self._loss, loss)
+        _update_one_stat(self._acc1, acc1)
+        _update_one_stat(self._acc5, acc5)
+
+        # update epoch tracker
+        self._epoch = epoch
+
+    def contains_data(self):
+        """Return an indicator whether any stats are stored."""
+        return np.any(self._loss)
+
+    def get(self):
+        """Return the stats."""
+        return (
+            copy.deepcopy(self._epochs),
+            copy.deepcopy(self._loss),
+            copy.deepcopy(self._acc1),
+            copy.deepcopy(self._acc5),
+            copy.deepcopy(self._epoch),
+        )
+
+    def set(self, epochs, loss, acc1, acc5, epoch):
+        """Set the stats."""
+        self._epochs = copy.deepcopy(epochs)
+        self._loss = copy.deepcopy(loss)
+        self._acc1 = copy.deepcopy(acc1)
+        self._acc5 = copy.deepcopy(acc5)
+        self._epoch = copy.deepcopy(epoch)
 
 
 class TrainLogger(object):
@@ -34,7 +110,7 @@ class TrainLogger(object):
         self._logdir = log_dir
         self._stdout_file = stdout_file
         self._stdout_init = False
-        self._diagnostics_step = 20 if "imagenet" in self._logdir else 50
+        self._diagnostics_step = 50
         self._class_to_names = class_to_names
 
         # some parameters initialized later with "initialize()"
@@ -53,17 +129,9 @@ class TrainLogger(object):
         self._test_str = None
         self._timing_str = None
 
-        # some internal variables to keep track of test statistics
-        self.train_epoch = []
-        self.train_acc1 = []
-        self.train_acc5 = []
-        self.train_loss = []
-
-        # some internal variables to keep track of test statistics
-        self.test_epoch = []
-        self.test_acc1 = []
-        self.test_acc5 = []
-        self.test_loss = []
+        # tracker for train and test statistics
+        self.tracker_train = StatTracker()
+        self.tracker_test = StatTracker()
 
     def _get_writer(self):
         """Get writer and initialize if possible."""
@@ -108,17 +176,9 @@ class TrainLogger(object):
         self._title = "Retraining" if self._is_retraining else "Training"
         self._t_last_print = time.time()
 
-        # start arrays for training stats
-        self.train_epoch = []
-        self.train_acc1 = []
-        self.train_acc5 = []
-        self.train_loss = []
-
-        # start arrays for test accuracies, etc...
-        self.test_epoch = []
-        self.test_acc1 = []
-        self.test_acc5 = []
-        self.test_loss = []
+        # reset trackers
+        self.tracker_train.reset(num_epochs)
+        self.tracker_test.reset(num_epochs)
 
         # a few display lengths ....
         format_epoch = (
@@ -188,14 +248,12 @@ class TrainLogger(object):
             )
         )
 
-        # compute x axis in terms of epochs
+        # compute x axis in terms of total steps
         epoch_step = epoch * self._steps_per_epoch + step
+        epoch_fraction = epoch_step / self._steps_per_epoch
 
         # store statistics
-        self.train_epoch.append(epoch_step / self._steps_per_epoch)
-        self.train_acc1.append(acc1)
-        self.train_acc5.append(acc5)
-        self.train_loss.append(float(loss))
+        self.tracker_train.update(epoch_fraction, float(loss), acc1, acc5)
 
         # logging for tensorboard
         if writer is not None:
@@ -235,10 +293,7 @@ class TrainLogger(object):
     def test_diagnostics(self, epoch, loss, acc1, acc5):
         """Finish test statistics computations and store them."""
         # store statistics
-        self.test_epoch.append(epoch)
-        self.test_loss.append(float(loss))
-        self.test_acc1.append(acc1)
-        self.test_acc5.append(acc5)
+        self.tracker_test.update(epoch, loss, acc1, acc5)
 
         # get the writer
         writer = self._get_writer()
@@ -249,8 +304,8 @@ class TrainLogger(object):
                 writer,
                 self._global_tag,
                 "{}TestLoss".format(self._title),
-                self.test_loss[-1],
-                self.test_epoch[-1],
+                float(loss),
+                epoch,
                 self._n_idx,
                 self._r_idx,
                 self._s_idx,
@@ -260,8 +315,8 @@ class TrainLogger(object):
                 writer,
                 self._global_tag,
                 "{}TestAcc1".format(self._title),
-                self.test_acc1[-1],
-                self.test_epoch[-1],
+                acc1,
+                epoch,
                 self._n_idx,
                 self._r_idx,
                 self._s_idx,
@@ -271,8 +326,8 @@ class TrainLogger(object):
                 writer,
                 self._global_tag,
                 "{}TestAcc5".format(self._title),
-                self.test_acc5[-1],
-                self.test_epoch[-1],
+                acc5,
+                epoch,
                 self._n_idx,
                 self._r_idx,
                 self._s_idx,
@@ -280,12 +335,7 @@ class TrainLogger(object):
 
         # print progress
         self._print(
-            self._test_str.format(
-                self.test_epoch[-1] + 1,
-                self.test_loss[-1],
-                self.test_acc1[-1] * 100.0,
-                self.test_acc5[-1] * 100.0,
-            )
+            self._test_str.format(epoch + 1, loss, acc1 * 100.0, acc5 * 100.0)
         )
 
     def epoch_diagnostics(self, t_total, t_loading, t_optim, t_enforce, t_log):

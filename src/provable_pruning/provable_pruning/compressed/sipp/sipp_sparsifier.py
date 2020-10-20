@@ -5,8 +5,8 @@ import torch.nn as nn
 
 from ..base import (
     BaseSparsifier,
-    DetWeightSparsifier,
-    RandWeightSparsifier,
+    DetFeatureSparsifier,
+    RandFeatureSparsifier,
 )
 
 
@@ -46,7 +46,7 @@ class SiPPSparsifier(BaseSiPPSparsifier):
 
     @property
     def _sparsifier_class(self):
-        return DetWeightSparsifier
+        return DetFeatureSparsifier
 
 
 class SiPPRandSparsifier(BaseSiPPSparsifier):
@@ -54,7 +54,7 @@ class SiPPRandSparsifier(BaseSiPPSparsifier):
 
     @property
     def _sparsifier_class(self):
-        return RandWeightSparsifier
+        return RandFeatureSparsifier
 
 
 class SiPPHybridSparsifier(BaseSparsifier):

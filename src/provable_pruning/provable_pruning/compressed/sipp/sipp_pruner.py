@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 
-from ..base import BasePruner, RandWeightPruner, DetWeightPruner
+from ..base import BasePruner, RandFeaturePruner, DetFeaturePruner
 from ..base_sens import BaseSensPruner
 
 
@@ -11,7 +11,7 @@ class SiPPRandPruner(BaseSensPruner):
 
     @property
     def _pruner_class(self):
-        return RandWeightPruner
+        return RandFeaturePruner
 
 
 class SiPPPruner(BaseSensPruner):
@@ -19,7 +19,7 @@ class SiPPPruner(BaseSensPruner):
 
     @property
     def _pruner_class(self):
-        return DetWeightPruner
+        return DetFeaturePruner
 
 
 class SiPPHybridPruner(BasePruner):
