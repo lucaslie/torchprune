@@ -1,1 +1,1 @@
-"""Package containing utility functions for provable pruning experiments."""
+"""Package containing utility functions for pruning experiments."""

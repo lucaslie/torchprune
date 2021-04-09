@@ -5,10 +5,22 @@ import numpy as np
 import torch
 import yaml
 
-import provable_pruning as pp
-import provable_pruning.util.train as pp_train
+import torchprune as tp
+import torchprune.util.train as tp_train
+import torchprune.util.tensor as tp_tensor
 from .util.gen import NetGen
 from .util.data import get_data_loader
+
+
+def _ensure_full_init(func):
+    """Ensure full initialization of the Evaluator with this decorator."""
+
+    def ensured_init_func(self, *args, **kwargs):
+        if not self._fully_initialized:
+            self._full_init()
+        return func(self, *args, **kwargs)
+
+    return ensured_init_func
 
 
 class Evaluator(object):
@@ -36,7 +48,7 @@ class Evaluator(object):
         # Using a larger C because the *Star algorithms work
         self._c_constant = 3
         # better with more data points (i.e., larger S)
-        self._c_constant = 10
+        # self._c_constant = 10
 
         # save name of the data set
         self._dataset_name = param["network"]["dataset"]
@@ -69,32 +81,17 @@ class Evaluator(object):
             arch=param["network"]["name"],
         )
 
-        # Load the training, validation, test loader
-        # We need to run through the network once to get etas. That's why we
-        # are passing in a dummy generated network
-        self._loaders = get_data_loader(
-            param, self._get_net(), self._c_constant
-        )
-        self._print_loader_msg()
-
-        # initialize the nettrainer
-        self._net_trainer = pp_train.NetTrainer(
-            param["generated"]["training"],
-            param["generated"]["retraining"],
-            self._loaders["train"],
-            self._loaders["test"],
-            self._loaders["val"],
-            param["generated"]["numAvailableGPUs"],
-            self._logger.get_train_logger(),
-        )
+        # Loaders and trainer initialized later when needed
+        self._loaders = None
+        self._net_trainer = None
 
         self._logger.print_info(
             "Training Parameters:\n"
-            f"{yaml.dump(self._net_trainer.train_params)}"
+            f'{yaml.dump(param["generated"]["training"])}'
         )
         self._logger.print_info(
             "Retraining Parameters:\n"
-            f"{yaml.dump(self._net_trainer.retrain_params)}"
+            f'{yaml.dump(param["generated"]["retraining"])}'
         )
 
         # These are all parameters later set in _initialize_networks()
@@ -123,12 +120,16 @@ class Evaluator(object):
         # bool to check whether '__initialize_compression()' was called once
         self._initialized_once = False
 
+        # bool to check whether '_full_init()' was called once
+        self._fully_initialized = False
+
         # print keep ratios
         self._logger.print_info(
             "Keep ratios are: "
             + ", ".join([f"{kr:.3f}" for kr in self._keep_ratios])
         )
 
+    @_ensure_full_init
     def get_dataloader(self, *args):
         """Retrieve desired dataloaders according to types list.
 
@@ -143,23 +144,7 @@ class Evaluator(object):
             list -- list of loaders according to types
 
         """
-        all_types = ["train", "valid", "test", "loader_s", "loader_t"]
-
-        if len(args) == 0:
-            args = all_types
-
-        loaders = []
-        for loader_type in args:
-            if loader_type not in all_types:
-                raise ValueError(
-                    f"{loader_type} was not found. Choose from " f"{all_types}"
-                )
-            if "loader" in loader_type:
-                loaders.append(getattr(self, loader_type))
-            else:
-                loader_type += "_loader"
-                loaders.append(getattr(self._net_trainer, loader_type))
-        return loaders
+        return [self._loaders[arg] for arg in args]
 
     def get_all(
         self,
@@ -209,6 +194,7 @@ class Evaluator(object):
             # can only index with index list in numpy...
             return np.array(nets)[idxs].tolist()
 
+    @_ensure_full_init
     def get_by_pr(self, prune_ratio, method="ReferenceNet", n_idx=0, r_idx=0):
         """Get network by specific prune ratio."""
         # check if algorithm is available
@@ -218,12 +204,9 @@ class Evaluator(object):
                 f"param file. Choose from: {self._method_names}."
             )
 
-        # check that we have compressed everything
-        if not self._fully_compressed:
-            if not self._logger.state_loaded:
-                self.run()
-            elif not self._initialized_once:
-                self._initialize_networks(0)
+        # check that we initialized at least once
+        if not self._initialized_once:
+            self._initialize_networks(0)
 
         # pick the closest prune ratio
         kr_desired = 1 - prune_ratio
@@ -305,6 +288,36 @@ class Evaluator(object):
         # we have now compressed all networks
         self._fully_compressed = True
 
+    def _full_init(self):
+        """Initialize the expensive parts that we may not need."""
+        if self._fully_initialized:
+            return
+
+        param = self._logger.param
+
+        # Load the training, validation, test loader
+        # We need to run through the network once to get etas. That's why we
+        # are passing in a dummy generated network
+        self._loaders = get_data_loader(
+            param, self._get_net(), self._c_constant
+        )
+
+        # initialize the nettrainer
+        self._net_trainer = tp_train.NetTrainer(
+            param["generated"]["training"],
+            param["generated"]["retraining"],
+            self._loaders["train"],
+            self._loaders["test"],
+            self._loaders["val"],
+            param["generated"]["numAvailableGPUs"],
+            self._logger.get_train_logger(),
+        )
+
+        # now fully initialized and print loader message.
+        self._fully_initialized = True
+        self._print_loader_msg()
+
+    @_ensure_full_init
     def _initialize_networks(self, n_idx):
         # delete reference to old networks
         self._net_ref = None
@@ -321,7 +334,7 @@ class Evaluator(object):
 
         # cache etas and num patches of the net
         for (img, _) in self._loaders["s_set"]:
-            img = img.to(self._device)
+            img = tp_tensor.to(img, self._device)
             self._net_ref(img)
             break
 
@@ -366,29 +379,30 @@ class Evaluator(object):
             # append to array
             self._compressed_nets.append(compressed_net)
 
+    @_ensure_full_init
     def _call_net_constructor(self, method):
         kwargs = {"original_net": self._net_ref}
+        method_class = getattr(tp, method)
 
         methods_with_args = [
             (
-                ["SiPPNet", "PFPNet"],
+                (tp.BaseSensNet,),
                 {"delta_failure": self._delta, "c_constant": self._c_constant},
             ),
             (
-                ["SnipNet"],
-                {"loss_handle": self._net_trainer.get_loss_handle()},
-            ),
-            (
-                ["SiPPNet", "PFPNet", "SnipNet", "ThiNet"],
-                {"loader_s": self._loaders["s_set"]},
+                (tp.CompressedNet,),
+                {
+                    "loader_s": self._loaders["s_set"],
+                    "loss_handle": self._net_trainer.get_loss_handle(),
+                },
             ),
         ]
 
         for methods, kwargs_partial in methods_with_args:
-            if any(name in method for name in methods):
+            if issubclass(method_class, methods):
                 kwargs.update(kwargs_partial)
 
-        return getattr(pp, method)(**kwargs)
+        return method_class(**kwargs)
 
     def _run_training(self):
         for n_idx in range(self._num_nets):
@@ -397,6 +411,7 @@ class Evaluator(object):
                 continue
             self._initialize_networks(n_idx)
 
+    @_ensure_full_init
     def _single_run(self, keep_ratio):
 
         # start message at logger
@@ -458,12 +473,16 @@ class Evaluator(object):
                 is_rerun=net_available,
             )
 
+            # do a quick saving of current state
+            self._logger.save_global_state(fast_saving=True)
+
         # Compute over all time elapsed
         time_elapsed += time.time()
 
         # send to logger
         self._logger.run_diagnostics_finish(t_elapsed=time_elapsed)
 
+    @_ensure_full_init
     def _do_compression(self, compressed_net, keep_ratio):
         # get some indices
         n_idx = self._logger.n_idx
@@ -489,12 +508,15 @@ class Evaluator(object):
             or len(self._compress_ratios[keep_ratio]) > 0
         )
 
-        # check if network is available, if so skip compression
         net_available = self._net_trainer.is_available(
             compressed_net, n_idx, keep_ratio, s_idx, r_idx
         )
 
+        # check if network is available, if so skip compression
         if net_available:
+            self._net_trainer.load_compression(
+                compressed_net, n_idx, keep_ratio, s_idx, r_idx, keep_ratio
+            )
             self._logger.print(
                 "Skipping compression since we can load network!"
             )
@@ -585,6 +607,7 @@ class Evaluator(object):
 
         return net_available
 
+    @_ensure_full_init
     def _do_retraining(self, compressed_net, keep_ratio):
         # get indices
         n_idx = self._logger.n_idx
@@ -625,6 +648,7 @@ class Evaluator(object):
             compressed_net, n_idx, keep_ratio, s_idx, r_idx
         )
 
+    @_ensure_full_init
     def _do_stats(self, compressed_net):
         # compute relative sizes
         size_rel = compressed_net.size() / self._size_original
@@ -635,6 +659,7 @@ class Evaluator(object):
             size_rel, flops_rel, lambda: self._net_trainer.test(compressed_net)
         )
 
+    @_ensure_full_init
     def _print_loader_msg(self):
         """Print information about the loader."""
         self._logger.print_info("Dataloader Information:")
@@ -665,10 +690,11 @@ TRAINING/LOADING:"""
         )
 
     def _print_init_msg_2(self, loss, acc1, acc5):
+        m_name = self._logger.names_metrics
         self._logger.print_info(
             f"""TRAINING/LOADING DONE!
 
-TEST LOSS: {loss:3.3f}, TEST TOP 1: {acc1:3.2f}%, TEST TOP 5: {acc5:3.2f}%
+TEST: LOSS: {loss:3.3f} | {m_name[0]}: {acc1:3.2f}% | {m_name[1]}: {acc5:3.2f}%
 
 NUMBER OF COMPRESSIBLE LAYERS: {self._net_ref.num_compressible_layers}
 NUMBER OF WEIGHTS/LAYER: {self._net_ref.num_weights}
@@ -677,7 +703,7 @@ NUMBER OF WEIGHTS/LAYER: {self._net_ref.num_weights}
 
     def _print_init_msg_3(self):
         self._logger.print_info(
-            f"""
+            """
 
 FINISHED INITIALIZING NEW ARCHITECTURE
 

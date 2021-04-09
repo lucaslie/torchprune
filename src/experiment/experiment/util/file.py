@@ -1,24 +1,15 @@
 """A module for all helper functions pertaining to files and parameters."""
-import subprocess
 import copy
 import os
 import pathlib
 import datetime
+import time
 import re
 import torch
 
 import yaml
 import numpy as np
-
-
-# Frees memory on the GPU by killing all python processes
-def free_gpu_memory():
-    """Kill all python process on the GPU."""
-    cmd = "nvidia-smi | awk '$5~\"python\" {print $3}' | xargs kill -9"
-    try:
-        subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
-        print("No python processes were running on the GPU")
+import matplotlib.colors as mcolors
 
 
 def create_directory(path):
@@ -43,23 +34,10 @@ def write_parameters(param, dir, file="parameters.yaml"):
     with open(os.path.join(dir, file), "w+") as ymlfile:
         yaml.dump(param_original, ymlfile)
 
-    # also store a copy of some generated parameters ...
-    param_generated = {}
-    param_generated["numWorkers"] = param["generated"]["numWorkers"]
-    param_generated["idWorker"] = param["generated"]["idWorker"]
-    param_generated["responsibility"] = param["generated"][
-        "responsibility"
-    ].tolist()
-
-    file_generated, file_ending = os.path.splitext(file)
-    file_generated = f"{file_generated}_generated{file_ending}"
-
-    with open(os.path.join(dir, file_generated), "w+") as ymlfile:
-        yaml.dump(param_generated, ymlfile)
-
 
 def set_mosek_path():
     """Set the MOSEK licence file path."""
+    # TODO: do this differently...
     os.environ["MOSEKLM_LICENSE_FILE"] = os.path.realpath("misc/mosek.lic")
 
 
@@ -76,7 +54,7 @@ def get_parameters(file, num_workers, id_worker):
 
     """
     # retrieve array of parameter files
-    param_array, file_actual = _generate_file_param(file)
+    param_array = _generate_file_param(file)
 
     # those should always be the same (doesn't make sense otherwise ...)
     num_nets = param_array[0]["experiments"]["numNets"]
@@ -105,7 +83,6 @@ def get_parameters(file, num_workers, id_worker):
             mode == "cascade"
             or mode == "retrain"
             or mode == "train"
-            or mode == "cascade-random"
             or mode == "cascade-rewind"
         )
 
@@ -125,7 +102,6 @@ def get_parameters(file, num_workers, id_worker):
         param["generated"] = _generate_remaining_param(
             param,
             responsibility,
-            file_actual,
             num_custom,
             id_custom,
             num_workers,
@@ -134,7 +110,43 @@ def get_parameters(file, num_workers, id_worker):
         yield param
 
 
-def _generate_file_param(file, preload_fixed=True):
+def load_param_from_file(file):
+    """Load the parameters from file w/ fixed parameters if desired."""
+    # parameter dictionary that will be built up
+    param = {}
+
+    def update_param_key_from_file(param_to_update):
+        """Update param (sub-) dict according to file."""
+        if not (
+            isinstance(param_to_update, dict) and "file" in param_to_update
+        ):
+            return
+
+        # delete file key-word from parameters
+        file_for_param = param_to_update["file"]
+        del param_to_update["file"]
+
+        # update with new parameters
+        # do it recursively so that we can also update file param there
+        param_current = copy.deepcopy(param_to_update)
+        param_to_update.update(load_param_from_file(file_for_param))
+        param_to_update.update(param_current)
+
+    # load the parameters.
+    with open(_get_full_param_path(file), "r") as ymlfile:
+        param.update(yaml.full_load(ymlfile))
+
+    # check if any configurations are specified using other param files
+    update_param_key_from_file(param)
+
+    # also recurse on dictionaries then, not on lists though...
+    for key in param:
+        update_param_key_from_file(param[key])
+
+    return param
+
+
+def _generate_file_param(file):
     """Generate the parameter dictionary from the yaml file.
 
     We will fill up the fixed parameters with the fixed parameter files, but if
@@ -142,99 +154,54 @@ def _generate_file_param(file, preload_fixed=True):
 
     Args:
         file (str): relative path under root/param to param file
-        preload_fixed (bool, optional): load fixed param too. Defaults to True.
 
     Returns:
         dict: all parameters to load
-
     """
+    # load params from the file (first default, then update with provided)
+    param_original = load_param_from_file("default.yaml")
+    param_original.update(load_param_from_file(file))
 
-    def load_param_from_file(file, preload_fixed=True):
-        """Load the parameters from file w/ fixed parameters if desired."""
-        # parameter dictionary that will be built up
-        param = {}
+    # add reference method.
+    if "experiments" in param_original:
+        param_original["experiments"]["methods"].insert(0, "ReferenceNet")
 
-        # helper function to get parameters out of yaml files
-        def update_param(file_name):
-            with open(_get_full_param_path(file_name), "r") as ymlfile:
-                param.update(yaml.full_load(ymlfile))
-
-        # list of parameters files to load in right order
-        if preload_fixed:
-            param_files = [
-                "fixed/parameters_data.yaml",
-                "fixed/parameters_dir.yaml",
-                "fixed/parameters_blacklist.yaml",
-                "fixed/parameters_names.yaml",
-                file,
-            ]
-        else:
-            param_files = [
-                file,
-            ]
-
-        # actually load the parameters (order is important here since we use
-        # the built-in update function of dicts, which will overwrite existing
-        # values.
-        for param_file in param_files:
-            update_param(param_file)
-
-        # also check for training file in parameters
-        if "training" in param and "file" in param["training"]:
-            update_param(param["training"]["file"])
-
-        return param
-
-    # now build up the param array ...
+    # now build up the param array with multiple customizations.
     param_array = []
 
-    # quickly load params from the file
-    param_original = load_param_from_file(file, False)
-
     # this is a param file that contains multiple parameters
-    if "file" in param_original and "customizations" in param_original:
-        # get the actual vanilla parameters
-        param_vanilla = load_param_from_file(
-            param_original["file"], preload_fixed
-        )
+    if "customizations" in param_original:
+        # pop customization from params
+        customizations = param_original.pop("customizations")
+
         # generate a list of customized parameters
-        for customization in param_original["customizations"]:
+        for custom in customizations:
             # get a copy of the vanilla parameters
-            param_custom = copy.deepcopy(param_vanilla)
+            param_custom = copy.deepcopy(param_original)
 
             # recurse into subdictionaries and modify desired key
             subdict = param_custom
-            for key in customization["key"][:-1]:
+            for key in custom["key"][:-1]:
                 subdict = subdict[key]
-            subdict[customization["key"][-1]] = customization["value"]
+            subdict[custom["key"][-1]] = custom["value"]
 
             # now append it to the array
             param_array.append(param_custom)
-
-        # also modify actual file
-        file_actual = param_original["file"]
     else:
         # simply put the one element in an array
-        param_array.append(load_param_from_file(file, preload_fixed))
-        file_actual = file
+        param_array.append(param_original)
 
-    # make sure we add "ReferenceNet" method everywhere
-    for param in param_array:
-        if "experiments" in param:
-            param["experiments"]["methods"].insert(0, "ReferenceNet")
-
-    return param_array, file_actual
+    return param_array
 
 
 def _generate_remaining_param(
-    param, responsibility, file, num_custom, id_custom, num_workers, id_worker
+    param, responsibility, num_custom, id_custom, num_workers, id_worker
 ):
     """Auto-generate the remaining parameters that are required.
 
     Args:
         param (dict): parameters loaded from file
         responsibility (np.array): responsibility mask for this worker
-        file (str): name of file
         num_custom (int): number of customizations
         id_custom (int): ID of this customization in range(num_custom)
         num_workers (int): total number of workers to split
@@ -289,62 +256,40 @@ def _generate_remaining_param(
 
     # generate list of names and colors for these particular set of algorithms
     generated["network_names"] = [
-        param["network_names"][key] for key in param["experiments"]["methods"]
+        param["network_names"][key] if key in param["network_names"] else key
+        for key in param["experiments"]["methods"]
     ]
+    mcolor_list = list(mcolors.CSS4_COLORS.keys())
     generated["network_colors"] = [
-        param["network_colors"][key] for key in param["experiments"]["methods"]
+        param["network_colors"][key]
+        if key in param["network_colors"]
+        else mcolor_list[hash(key) % len(mcolor_list)]
+        for key in param["experiments"]["methods"]
     ]
 
     # generate training and retraining parameters from provided ones
     generated["training"] = copy.deepcopy(param["training"])
-    generated["training"]["momentumDelta"] = 0.0
     generated["training"]["startEpoch"] = 0
-    generated["training"]["loss"] = generated["training"]["loss"].replace(
-        "nn.", ""
-    )
+    generated["training"]["outputSize"] = param["network"]["outputSize"]
 
     generated["retraining"] = copy.deepcopy(generated["training"])
     generated["retraining"].update(param["retraining"])
-    generated["retraining"]["sensTracking"] = False
 
-    # for rewind we might have a different start epoch in the retraining
+    # same metrics for training and re-training
+    generated["retraining"]["metricsTest"] = generated["training"][
+        "metricsTest"
+    ]
+
+    # needed for rewind checkpoint
     if "rewind" in param["experiments"]["mode"]:
-        # adjust start based on training epochs and desired retrain epochs
-        generated["retraining"]["startEpoch"] = (
-            generated["training"]["numEpochs"]
-            - generated["retraining"]["numEpochs"]
-        )
-
-        # total number of epochs is now the same as in training ...
-        generated["retraining"]["numEpochs"] = generated["training"][
-            "numEpochs"
-        ]
-
-        # also store that in train parameters so we can store rewind epoch
         generated["training"]["retrainStartEpoch"] = generated["retraining"][
             "startEpoch"
         ]
     else:
-        generated["retraining"]["startEpoch"] = 0
         generated["training"]["retrainStartEpoch"] = -1  # invalid in this case
 
-    # check for number of GPUs and apply linear scaling rule to training and
-    # retraining parameters
+    # check for number of available GPUs
     generated["numAvailableGPUs"] = torch.cuda.device_count()
-
-    # in case we want to do GPU-wise scaling of learning rate at some point...
-    scaling_factor = generated["numAvailableGPUs"]
-
-    generated["training"]["learningRate"] *= scaling_factor
-    generated["training"]["batchSize"] = int(
-        generated["training"]["batchSize"] * scaling_factor
-    )
-    generated["training"]["momentumDelta"] *= scaling_factor
-    generated["retraining"]["learningRate"] *= scaling_factor
-    generated["retraining"]["batchSize"] = int(
-        generated["retraining"]["batchSize"] * scaling_factor
-    )
-    generated["retraining"]["momentumDelta"] *= scaling_factor
 
     # get the results parent directory
     parent_dir = os.path.join(
@@ -355,17 +300,14 @@ def _generate_remaining_param(
     parent_dir = os.path.realpath(parent_dir)
 
     # generate the list of folders that have some parameter settings
-    results_dirs_prev = _find_latest_results(param, generated, parent_dir)
-    generated["resultsDirsPrev"] = results_dirs_prev
+    results_dir_prev = _find_latest_results(param, generated, parent_dir)
+    generated["resultsDirPrev"] = results_dir_prev
 
-    # finally check for ability to repurpose directoreis
-    repurpose_dir = len(results_dirs_prev) == 1 and results_dirs_prev[0][1]
-    generated["repurposeDir"] = repurpose_dir
-    if repurpose_dir:
-        old_dir, _, _ = results_dirs_prev[0]
-        parent_dir, time_tag = os.path.split(old_dir)
-    else:
+    # check if we re-purpose time tag now.
+    if results_dir_prev is None:
         time_tag = datetime.datetime.utcnow().strftime("%Y_%m_%d_%H_%M_%S_%f")
+    else:
+        parent_dir, time_tag = os.path.split(results_dir_prev)
 
     # now set the directories.
     results_dir = os.path.join(parent_dir, time_tag)
@@ -376,6 +318,7 @@ def _generate_remaining_param(
     generated["resultsDir"] = results_dir
 
     # also define sub directories
+    generated["stdoutDir"] = os.path.join(generated["resultsDir"], "stdout")
     generated["logDir"] = os.path.join(generated["resultsDir"], "log")
     generated["dataDir"] = os.path.join(generated["resultsDir"], "data")
     generated["reportsDir"] = os.path.join(generated["resultsDir"], "reports")
@@ -393,8 +336,11 @@ def _generate_remaining_param(
         ]
     )
 
-    # for rewind we want separate training directory, so we train for sure
-    if "rewind" in param["experiments"]["mode"]:
+    # we can put trained networks inside results folder
+    if (
+        "rewind" in param["experiments"]["mode"]
+        or param["directories"]["trained_networks"] is None
+    ):
         generated["training"]["dir"] = os.path.join(
             results_dir, "trained_networks"
         )
@@ -534,12 +480,15 @@ def _check_responsibilities(
     ]
 
     # convert to 4d numpy array so we can conveniently index into it
-    # doing it this ensures that if numNets == num_workers, each worker gets
-    # one net (and thus we don't do training multiple times ...)
-    # same for numCustom ...
+    # doing it this way ensures the following splits for responsibilities:
+    # 1.) if num_custom == 1 && num_nets % num_workers == 0:
+    #     workers get responsibilities for entire nets (mutually exclusive)
+    # 1.) if num_custom != 1 && num_custom % num_workers == 0:
+    #     workers get responsibilities for entire customization
     worker_responsibilities = np.array(worker_responsibilities)
     worker_responsibilities = np.reshape(
-        worker_responsibilities, (num_methods, num_rep, num_nets, num_custom)
+        worker_responsibilities,
+        (num_methods, num_rep, num_nets, num_custom),
     )
     worker_responsibilities = worker_responsibilities.transpose()
 
@@ -570,14 +519,16 @@ def _find_latest_results(param, generated, parent_dir):
         """Check if parameters match (except for blacklist)."""
         # check for empty/nonexisting dictionary
         if not other_params or other_params is None:
-            return False
+            # if both dictionaries are empty it's fine
+            if other_params != this_params:
+                return False
 
         # loop through key, value pairs and check
-        for key in this_params:
+        for key in set(list(other_params.keys()) + list(this_params.keys())):
             if key in blacklist:
                 continue
 
-            if key not in other_params:
+            if key not in other_params or key not in this_params:
                 return False
 
             if isinstance(this_params[key], dict):
@@ -588,93 +539,59 @@ def _find_latest_results(param, generated, parent_dir):
 
         return True
 
-    def compatible_responsibility(this_generated, other_generated_file):
-        # now go through and check both compatibility and deletability
-        compatible = None
-        deleteable = None
+    def get_matches():
+        """Get all the matching resulting directories in the parent dir."""
+        # check for matching params in all subdirectories (except latest)
+        matches = []
+        for path in sorted(parent_dir.glob("*[!latest]")):
+            # retrieve other parameters and check for matches
+            other_file = os.path.join(path, "parameters.yaml")
 
-        # get the responsibility mask
-        this_res = this_generated["responsibility"]
+            try:
+                has_equal_params = equal_params(
+                    param, _generate_file_param(other_file)[0]
+                )
+            except (FileNotFoundError, TypeError):
+                has_equal_params = False
 
-        # also get some parameters from the other file
-        if os.path.isfile(other_generated_file):
-            # get generated parameters
-            other_generated = _generate_file_param(
-                other_generated_file, False
-            )[0][0]
-            # retrieve responsibilities ...
-            other_res = np.array(other_generated["responsibility"])
-            # check for num workers of other
-            other_num_workers = other_generated["numWorkers"]
-            other_id_worker = other_generated["idWorker"]
-        else:
-            # standard behavior for backwards compatibility
-            other_res = np.zeros_like(this_res, dtype=np.bool)
-            other_num_workers = -1
-            other_id_worker = -1
+            if has_equal_params:
+                matches.append(path)
 
-        if this_generated["numWorkers"] == 1:
-            # all good since there is only one worker in this case working on
-            # the last customization
-            compatible = True
-            deleteable = True
-        elif os.path.isfile(other_generated_file):
-            if other_num_workers == 1:
-                # in this case we can use the results, but not delete them
-                compatible = True
-                deleteable = False
-            elif (
-                np.array_equal(this_res, other_res)
-                and other_num_workers == this_generated["numWorkers"]
-                and other_id_worker == this_generated["idWorker"]
-            ):
-                # in this case the folder is a previous version of the current
-                # worker
-                compatible = True
-                deleteable = True
-            else:
-                # in this case the folder is a previous version of a different
-                # worker
-                compatible = False
-                deleteable = False
-        else:
-            # undetermined in this case
-            # this is just for legacy support ...
-            compatible = True
-            deleteable = False
+        return matches
 
-        # also check for overlapping responsibility now
-        if not other_res.shape == this_res.shape:
-            other_res = np.zeros_like(this_res, dtype=np.bool)
+    # only worker 0 can generate folder. So loop and wait for a while until
+    # worker 0 has generated the matching directory.
+    backoff_time = 1
+    while backoff_time < 513:
+        matches = get_matches()
 
-        return compatible, deleteable, other_res
-
-    # check for matching params in all subdirectories (except latest)
-    matches = []
-    for path in sorted(parent_dir.glob("*[!latest]")):
-        # retrieve other parameters and check for matches
-        other_file = os.path.join(path, "parameters.yaml")
-        other_generated_file = os.path.join(path, "parameters_generated.yaml")
-
-        try:
-            has_equal_params = equal_params(
-                param, _generate_file_param(other_file)[0][0]
+        # at most one match should exist...
+        if len(matches) > 1:
+            raise ValueError(
+                "Exactly one matching directory is expected. "
+                "Please clean up results folder."
             )
-        except (FileNotFoundError, TypeError):
-            has_equal_params = False
 
-        if not has_equal_params:
-            continue
+        # we can return if we find a match
+        if len(matches) == 1:
+            return matches[0]
 
-        # check compatible from responsibilities as well
-        comp, delable, other_resp = compatible_responsibility(
-            generated, other_generated_file
-        )
-        # only add to matches if compatible ...
-        if comp:
-            matches.append((path, delable, other_resp))
+        # worker with first responsibility gets to return to generate folder.
+        # this is usually either worker 0 or the first worker with
+        # responsibilities when we have customizations ...
+        if generated["responsibility"].flatten()[0]:
+            return
 
-    return matches
+        # sleep and wait a little longer to if we get a match
+        print(f"Waiting {backoff_time}s until primary worker generates dir.")
+        time.sleep(backoff_time)
+        backoff_time *= 2
+
+    # if at the end there is still no match, we should raise an error
+    raise ValueError(
+        "No matching results directory found; "
+        "please initiate worker 0 which will initiate the results directory."
+    )
 
 
 def _get_full_param_path(file):

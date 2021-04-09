@@ -3,9 +3,11 @@ import argparse
 import os
 
 from . import Logger, Evaluator
-from .util.file import free_gpu_memory, get_parameters
+from .util.file import get_parameters
 
-PARSER = argparse.ArgumentParser(description="BLG Compression",)
+PARSER = argparse.ArgumentParser(
+    description="BLG Compression",
+)
 
 PARSER.add_argument(
     "param_files",
@@ -36,9 +38,6 @@ PARSER.add_argument(
 
 def main():
     """Initialize and start compression experiment from command line."""
-    # Free GPU memory first by killing python processes
-    free_gpu_memory()
-
     # parser arguments
     args = PARSER.parse_args()
 

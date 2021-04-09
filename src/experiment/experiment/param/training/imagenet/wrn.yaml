@@ -1,0 +1,21 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+# Training from:
+# https://arxiv.org/abs/1706.02677
+# and
+# https://openreview.net/forum?id=S1gSj0NKvB
+
+file: "training/imagenet/common.yaml"
+
+batchSize: 128
+
+optimizer: "SGD"
+optimizerKwargs:
+  lr: 0.1
+  weight_decay: 5.0e-4
+  nesterov: True
+  momentum: 0.9

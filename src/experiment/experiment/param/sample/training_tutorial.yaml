@@ -1,0 +1,119 @@
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+# ************* A DETAILED DESCRIPTION OF TRAINING CONFIGURATIONS *************
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+#
+
+#
+# *****************************************************************************
+# ******************************** TRANSFORMS *********************************
+# *****************************************************************************
+#
+# Here we can specify a list of transforms that are applied to the training set
+# and the test sets (validation set and test set), respectively. Finally for
+# all sets "transformsFinal" is applied at the end.
+#
+# Transforms are specified as list and need both a "type" and "kwargs":
+# * "type":
+#   class name of the transform, any transform that is available from
+#   torchprune.util.transforms can be picked.
+# * "kwargs":
+#   args and kwargs of __init__ for that transform
+#
+transformsTrain:
+  - type: Pad
+    kwargs: { padding: 4 }
+  - type: RandomCrop
+    kwargs: { size: 32 }
+  - type: RandomHorizontalFlip
+    kwargs: {}
+transformsTest: []
+transformsFinal:
+  - type: ToTensor
+    kwargs: {}
+  - type: Normalize
+    kwargs: { mean: [0.4914, 0.4822, 0.4465], std: [0.2023, 0.1994, 0.2010] }
+
+#
+# *****************************************************************************
+# ******************************* LOSS FUNCTION *******************************
+# *****************************************************************************
+#
+# Any loss that is available from torchprune.util.nn_loss specified with
+# the class name ("loss") and the kwargs ("lossKwargs") of the respective
+# __init_function.
+loss: "CrossEntropyLoss"
+lossKwargs: { reduction: mean }
+
+#
+# *****************************************************************************
+# ******************************* TEST METRICS ********************************
+# *****************************************************************************
+#
+# EXACTLY TWO need to be specified. Pick any test metric available from
+# torchprune.util.metrics
+# The first metric is the "main" metric and will be used for most analysis
+# purposes.
+#
+# "type" denotes the class name and "kwargs" the kwargs of __init__
+metricsTest:
+  - type: TopK
+    kwargs: { topk: 1 }
+  - type: TopK
+    kwargs: { topk: 5 }
+
+#
+# *****************************************************************************
+# ******************************** BATCH SIZE *********************************
+# *****************************************************************************
+#
+batchSize: 128
+
+#
+# *****************************************************************************
+# ********************************* Optimizer *********************************
+# *****************************************************************************
+#
+# Pick any optimizer available at torch.optim
+# "optimizerKwargs" to are kwargs of __init__
+optimizer: "SGD"
+optimizerKwargs:
+  lr: 0.1
+  weight_decay: 1.0e-4
+  nesterov: False
+  momentum: 0.9
+
+#
+# *****************************************************************************
+# ***************************** TRAINING EPOCHS *******************************
+# *****************************************************************************
+#
+numEpochs: 182
+
+#
+# *****************************************************************************
+# ************************ LEARNING RATE SCHEDULERS ***************************
+# *****************************************************************************
+#
+# Pick any number of learning rate schedulers that are available at
+# torchprune.util.lr_scheduler
+#
+# Learning rate schedulers are stepped in the order specified here.
+#
+# Note that the learning rate scheduler is stepped at EVERY optimization step
+# (not at every epoch like in most pytorch tutorials)
+#
+# type refers to class name, "kwargs" to regular kwargs of __init__
+# "stepKwargs" refers to kwargs of __init__ that are specified HERE as number
+# epochs but since we apply learning rate scheduler with every optimization
+# step need to converted to actual optimization steps instead of epochs.
+lrSchedulers:
+  - type: MultiStepLR
+    stepKwargs: { milestones: [91, 136] }
+    kwargs: { gamma: 0.1 }
+  - type: WarmupLR
+    stepKwargs: { warmup_epoch: 5 }
+    kwargs: {}

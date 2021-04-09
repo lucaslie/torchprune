@@ -89,8 +89,14 @@ class Grapher(object):
         remove_outlier,
         show_delta,
         force_x_axis=False,
+        logscale=False,
+        x_is_int=False,
     ):
         """Format the axes of the current figure."""
+        # log scale if wanted on x-axis
+        if logscale:
+            self._figure.gca().set_xscale("log")
+
         # set plot limits on x-axis ...
         x_min = self._x_min * (100 if percentage_x else 1)
         x_max = self._x_max * (100 if percentage_x else 1)
@@ -99,12 +105,15 @@ class Grapher(object):
         if not force_x_axis:
             x_min = max(x_min, x_data.min())
             x_max = min(x_max, x_data.max())
-            x_buffer = 0.02 * abs(x_max - x_min)
-            x_min -= x_buffer
-            x_max += x_buffer
-
-        x_min = np.floor(x_min) if percentage_x else x_min
-        x_max = np.ceil(x_max) if percentage_x else x_max
+            if logscale:
+                x_min = 10.0 ** (np.log10(x_min) - 0.02)
+                x_max = 10.0 ** (np.log10(x_max) + 0.02)
+            else:
+                x_buffer = 0.02 * abs(x_max - x_min)
+                x_min -= x_buffer
+                x_max += x_buffer
+        x_min = np.floor(x_min) if percentage_x and not logscale else x_min
+        x_max = np.ceil(x_max) if percentage_x and not logscale else x_max
         self._figure.gca().set_xlim(x_min, x_max)
 
         # set plot limits on y-axis
@@ -112,23 +121,34 @@ class Grapher(object):
         y_min = np.floor(y_min) if percentage_y else y_min
         y_max = np.percentile(y_data + y_offset, 85 if remove_outlier else 100)
         y_max = np.ceil(y_max) if percentage_y else y_max
+        if not np.isfinite(y_min):
+            y_min = 0.1 * y_max if np.isfinite(y_max) else 0.0
+        if not np.isfinite(y_max):
+            y_max = 10 * y_min if np.isfinite(y_min) else 1.0
         y_buffer = 0.1 * abs(y_max - y_min)
         self._figure.gca().set_ylim(y_min - y_buffer, y_max + y_buffer)
 
         # Percentage axes
         self._figure.gca().xaxis.set_major_formatter(
-            self._get_formatter(False, percentage_x)
+            self._get_formatter(False, percentage_x, x_is_int)
         )
         self._figure.gca().yaxis.set_major_formatter(
             self._get_formatter(show_delta, percentage_y)
         )
 
-    def _get_formatter(self, add_plus_sign=False, add_percentage=False):
+    def _get_formatter(
+        self, add_plus_sign=False, add_percentage=False, is_int=False
+    ):
         @mtick.FuncFormatter
         def percentage_formatter(val, pos):
             plus_pre = "+" if add_plus_sign else ""
             suffix = "%" if add_percentage else ""
-            val_str = f"{val:.1f}" if add_percentage else f"{val:.2f}"
+            if is_int:
+                val_str = f"{int(val)}"
+            elif add_percentage:
+                val_str = f"{val:.1f}"
+            else:
+                val_str = f"{val:.2f}"
             return f"{plus_pre if val > 0.0 else ''}{val_str}{suffix}"
 
         return percentage_formatter
@@ -194,6 +214,36 @@ class Grapher(object):
             values_flat -= values_flat[idx_ref : idx_ref + 1]
         return values_flat
 
+    def _bootstrap_and_regress(
+        self, x_train, y_train, x_test, fit_intercept, conf_int=95
+    ):
+        """Return regression values with bootstrapping as confidence intervals.
+
+        Args:
+        x_train (ndarray): "input", shape == [num_data_points x num_features]
+        y_train (ndarray): "output", shape == [num_data_points]
+        x_test (ndarray): "test input", shape [num_data_points x num_features]
+
+        Returns predicted values for nominal model with upper/lower confidence
+        based bootstrapped models.
+        """
+
+        def f_reg(_x, _y):
+            """Return predicted values from sklearn's linear regressor."""
+            linreg = skl.linear_model.LinearRegression(
+                fit_intercept=fit_intercept
+            )
+            linreg.fit(_x, _y)
+            return linreg.predict(x_test)
+
+        yhat = f_reg(x_train, y_train)
+        if conf_int is None:
+            err_bands = None
+        else:
+            yhat_boots = sns.algorithms.bootstrap(x_train, y_train, func=f_reg)
+            err_bands = sns.utils.ci(yhat_boots, conf_int, axis=0)
+        return yhat, err_bands
+
     def _add_title(self, legends, is_delta=False):
         """Add title, labels, etc... to plot."""
         self._figure.gca().set_xlabel(self._xlabel, fontsize=self._font_size)
@@ -244,6 +294,8 @@ class Grapher(object):
             percentage_y,
             remove_outlier,
             show_delta,
+            logscale=logplot,
+            x_is_int=self._x_values.dtype == int,
         )
 
         legends = []
@@ -269,10 +321,6 @@ class Grapher(object):
                 lolims=False,
                 uplims=False,
             )
-
-        # log scale if wanted on x-axis
-        if logplot:
-            self._figure.gca().set_xscale("log")
 
         # add title
         self._add_title(legends, show_delta)
@@ -484,6 +532,110 @@ class Grapher(object):
         # (like a ridge plot or joy plot)
         gspec.update(hspace=0.05)
         self._set_fig_layout()
+
+        # save image
+        if store:
+            return self._convert_to_img()
+
+        return self._figure
+
+    def graph_regression(
+        self,
+        fit_intercept=True,
+        show_ref=False,
+        show_delta=True,
+        percentage_x=False,
+        percentage_y=False,
+        remove_outlier=True,
+        store=True,
+        kwargs_legend={},
+    ):
+        """Plot scatter with regression."""
+        # reset plot
+        self._set_global_plt_params()
+
+        # some sanity checks on parameters
+        if self._ref_idx is None:
+            show_ref = True
+            show_delta = False
+
+        # flatten data
+        x_flat = self._flatten_data(self._x_values)
+        y_flat = self._flatten_data(
+            self._y_values, idx_ref=self._ref_idx if show_delta else None
+        )
+
+        # convert to percentage
+        x_flat *= 100.0 if percentage_x else 1.0
+        y_flat *= 100.0 if percentage_y else 1.0
+
+        # setup axes of figure (over-rule x-limits)
+        self._set_axes_layout(
+            x_flat,
+            y_flat,
+            0.0,
+            percentage_x,
+            percentage_y,
+            remove_outlier,
+            show_delta,
+            force_x_axis=True,
+        )
+
+        # get "test" data from axis limits
+        x_test = np.linspace(*self._figure.gca().get_xlim(), 100)
+
+        # loop through each algorithm and visualize it.
+        legends = []
+        handles = []
+        for i, (x_i, y_i) in enumerate(zip(x_flat, y_flat)):
+            # check if we should reference
+            if i is self._ref_idx and not show_ref:
+                continue
+
+            # set color and legend
+            color = self._colors[i % len(self._colors)]
+            legends.append(self._legend[i])
+
+            # regress data
+            y_hat, err_bands = self._bootstrap_and_regress(
+                x_i.reshape(-1, 1), y_i, x_test.reshape(-1, 1), fit_intercept
+            )
+
+            # plot scatter, regressor, and confidence intervals.
+            self._figure.gca().scatter(
+                x_i,
+                y_i,
+                edgecolor="face",
+                facecolor=color,
+                linewidths=self._markersize / 2,
+            )
+            h_line = self._figure.gca().plot(
+                x_test,
+                y_hat,
+                linestyle=self._linestyles[i],
+                linewidth=self._linewidth,
+                color=color,
+            )[0]
+            self._figure.gca().fill_between(
+                x_test,
+                *err_bands,
+                alpha=0.15,
+                facecolor=color,
+            )
+
+            # store handles as grouped tuples for the legend later ...
+            handles.append(h_line)
+
+        # add title
+        self._add_title(legends, show_delta)
+
+        # set layout
+        self._set_fig_layout()
+
+        # add legend
+        l_kwargs = {"loc": "best", "fontsize": self._font_size, "ncol": 2}
+        l_kwargs.update(kwargs_legend)
+        self._figure.gca().legend(handles, legends, **l_kwargs)
 
         # save image
         if store:

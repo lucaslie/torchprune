@@ -1,0 +1,44 @@
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+# ************ A DETAILED DESCRIPTION OF ALL HYPERPARAMETER SWEEPS ************
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+#
+
+#
+# *****************************************************************************
+# ************ SPECIFY THE EXPERIMENT FOR THE HYPERPARAMETER SWEEP ************
+# *****************************************************************************
+#
+file: "src/experiment/experiment/param/sample/resnet20.yaml"
+
+# Specify the sweep as a list of "customizations", each providing the recursive
+# keys of what parameter to modify and the value for the modification.
+#
+# In this case example, we search over initial learning rates for the optimizer
+# and different batch sizes.
+#
+# Note that the "key" is specified as a list of keys. The customizations are
+# created by generating the original parameters (as specified by "file") above
+# and then recursing on the (sub-)dictionaries of the parameters according to
+# the key list in order to modify the desired value.
+#
+# !!! This method only supports recursing on dictionaries but **not** lists!!
+customizations:
+  - key: ["training", "optimizerKwargs", "lr"]
+    value: 0.1
+  - key: ["training", "optimizerKwargs", "lr"]
+    value: 0.01
+  - key: ["training", "optimizerKwargs", "lr"]
+    value: 0.001
+  - key: ["training", "batchSize"]
+    value: 64
+  - key: ["training", "batchSize"]
+    value: 128
+  - key: ["training", "batchSize"]
+    value: 256
+# Overall, we would run the experiment specified in "file" 6x times (6
+# key/value specifications), each time with the respective key modified
+# according to the value provided.

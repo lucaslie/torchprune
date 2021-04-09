@@ -1,0 +1,40 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+batchSize: 32
+
+transformsTrain:
+  - type: RandomHorizontalFlip
+    kwargs: {}
+transformsTest: []
+transformsFinal:
+  - type: ToTensor
+    kwargs: {}
+  - type: Normalize
+    kwargs: { mean: [0.0, 0.0, 0.0], std: [1.0, 1.0, 1.0] }
+
+optimizer: "Adam"
+optimizerKwargs:
+  lr: 0.0001
+  weight_decay: 1.0e-4
+  nesterov: False
+  momentum: 0.9
+
+numEpochs: 100
+
+lrSchedulers:
+  - type: MultiStepLR
+    stepKwargs: { milestones: [50, 90] }
+    kwargs: { gamma: 0.1 }
+
+loss: "MSELoss"
+lossKwargs: { reduction: mean }
+
+metricsTest:
+  - type: TopK
+    kwargs: { topk: 1 }
+  - type: TopK
+    kwargs: { topk: 5 }

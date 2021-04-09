@@ -1,0 +1,26 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+file: "training/cifar/common.yaml"
+
+batchSize: 128
+
+optimizer: "SGD"
+optimizerKwargs:
+  lr: 0.1
+  weight_decay: 0.0005
+  nesterov: True
+  momentum: 0.9
+
+numEpochs: 200
+
+lrSchedulers:
+  - type: MultiStepLR
+    stepKwargs: { milestones: [60, 120, 160] }
+    kwargs: { gamma: 0.2 }
+  - type: WarmupLR
+    stepKwargs: { warmup_epoch: 5 }
+    kwargs: {}

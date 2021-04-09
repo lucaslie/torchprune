@@ -1,0 +1,37 @@
+# Prune a ResNet20 trained on CIFAR10 with various methods and repeat
+# the experiment multiple with separately trained network (different random
+# seed for initialization of the network). The experiment mode is "cascade".
+# It will thus perform iterative pruning+retraining.
+
+network:
+  name: "resnet20"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/resnet.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SiPPNet"
+    - "ThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 15
+      maxVal: 0.8
+      minVal: 0.05
+
+  retrainIterations: -1

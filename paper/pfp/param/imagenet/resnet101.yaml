@@ -1,0 +1,35 @@
+network:
+  name: "resnet101"
+  dataset: "ImageNet"
+  outputSize: 1000
+
+training:
+  file: "training/imagenet/resnet.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SoftNet"
+    - "ThiNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 1
+
+  plotting:
+    minVal: 0.3
+    maxVal: 0.95
+
+  spacing:
+    - type: "geometric"
+      maxVal: 0.90
+      minVal: 0.35
+      numIntervals: 12
+    - type: "linear"
+      maxVal: 0.31
+      minVal: 0.184
+      numIntervals: 4
+  retrainIterations: -1

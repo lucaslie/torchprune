@@ -1,0 +1,40 @@
+network:
+  name: "densenet22"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/densenet.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SiPPNet"
+    - "ThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 2
+      maxVal: 0.99
+      minVal: 0.855
+    - type: "geometric"
+      numIntervals: 58 # number of intervals to 0.5 in cascade mode
+      maxVal: 0.85
+      minVal: 0.10
+    - type: "linear"
+      maxVal: 0.0918
+      minVal: 0.0469
+      numIntervals: 6
+
+  retrainIterations: 22

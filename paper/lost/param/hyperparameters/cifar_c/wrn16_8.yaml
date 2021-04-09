@@ -1,0 +1,78 @@
+file: "paper/lost/param/cifar_c/wrn16_8.yaml"
+# Make sure num_customization is divisible by num_workers during deployment!!!
+# Currently, we have 36 customizations here...
+customizations:
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_1
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Blur_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Brightness_1
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Brightness_2
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Brightness_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Brightness_4
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Brightness_5
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Contrast_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Defocus_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Elastic_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Fog_1
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Fog_2
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Fog_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Fog_4
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Fog_5
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Frost_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Gauss_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Glass_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Impulse_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Jpeg_1
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Jpeg_2
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Jpeg_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Jpeg_4
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Jpeg_5
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Motion_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Pixel_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Sat_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Shot_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Snow_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Spatter_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Speckle_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Zoom_1
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Zoom_2
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Zoom_3
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Zoom_4
+  - key: ["experiments", "datasetTest"]
+    value: CIFAR10_C_Zoom_5

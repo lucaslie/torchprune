@@ -1,0 +1,203 @@
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+# *********** A DETAILED DESCRIPTION OF ALL POSSIBLE CONFIGURATIONS ***********
+# *****************************************************************************
+# *****************************************************************************
+# *****************************************************************************
+#
+
+#
+# *****************************************************************************
+# ************************ SPECIFY NETWORK AND DATASET ************************
+# *****************************************************************************
+#
+network:
+  # Any network that is available form `torchprune.util.models` module.
+  # It will be wrapped with `experiment.util.gen.NetGen` to produce the actual
+  # torch.nn.Module that represents the network.
+  # Note that if the dataset is an "ImageNet" dataset then the model will be
+  # from `torchprune.util.ImageNet`
+  name: "resnet20"
+
+  # Any dataset that is available from `torchprune.util.datasets`
+  dataset: "CIFAR10"
+
+  # Output size of the dataset.
+  outputSize: 10
+
+#
+# *****************************************************************************
+# ************************ SPECIFY TRAINING PARAMETERS ************************
+# *****************************************************************************
+#
+# If "file" is provided then the training configuration will be initialized
+# with the configuration specified at the file and then any configuration that
+# is specified on top of the file will take precedence!
+# Training parameters are based to `torchprune.util.train.NetTrainer`
+training:
+  # The file contains the standard training parameters for a resnet.yaml
+  # Check out sample/training_tutorial.yaml for a detailed description of
+  # training parameters.
+  file: "sample/training_tutorial.yaml"
+
+  # this will overwrite the number of epochs specified in file.
+  numEpochs: 182
+
+  # this will specify the epoch at which to start the training
+  # It specifies the epoch to which we should "rewind" the hyperparameters.
+  # In case the mode (see below) is "cascade-rewind" the weights are also
+  # rewound to that epoch.
+  # Total number of re-training epochs is numEpochs - startEpoch !!!
+  startEpoch: 0
+
+#
+# *****************************************************************************
+# *********************** SPECIFY RETRAINING PARAMETERS ***********************
+# *****************************************************************************
+#
+# Retraining parameters are initialized as follows:
+# 1. Deepcopy the training parameters to initialize the retraining parameters
+# 2. Overwrite the configuration with `file` configuration if `file` is
+#    specified.
+# 3. Overwrite the resulting configuration with any additional parameters
+#    provided.
+retraining:
+  # this will overwrite whatever is specified in for training
+  file: "training/cifar/resnet.yaml"
+
+  # this will overwrite whatever is specified after file is loaded
+  numEpochs: 182
+
+#
+# *****************************************************************************
+# ************************* SPECIFY EXPERIMENT CONFIG *************************
+# *****************************************************************************
+#
+experiments:
+  # Specify a list of methods. Any method that is importable form
+  # `torchprune.method` can be specified (class name!!)
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SiPPNet"
+    - "ThresNet"
+
+  # Provide the "experiment" mode. Choose from:
+  # 1. "retrain": one-shot pruning+retraining
+  # 2. "cascade": iterative pruning+retraining.
+  # 3. "train": only train the unpruned networks
+  # 4. "cascade-rewind": lottery ticket-style pruning with weight rewinding.
+  mode: "cascade"
+
+  # Provide number of repetitions:
+  # This specifies how often to repeat the same experiment using the same
+  # unpruned network.
+  numRepetitions: 1
+
+  # Provide number of network seeds:
+  # This specifies how often to repeat the same experiment using a different
+  # unpruned network (separately trained with a different random seed).
+  # Note that the total number of repetitions is numRepetitions*numNets
+  numNets: 3
+
+  # specify the min and max prune ratio shown in the generated plots.
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  # specify the intervals, i.e, the prune ratios which we should target.
+  # You can specify a list of multiple subsequent intervals which will be
+  # concatenated together to produce the overall prune ratio intervals.
+  #
+  # For each prune ratio spacing you need to specify `numIntervals`, `maxVal`,
+  # and `minVal`
+  # For the `type` choose between:
+  # * "geometric": uses np.geomspace(maxVal, minVal, numIntervals)
+  # * "linear": uses np.linspace(maxVal, minVal, numIntervals)
+  # * "harmonic": harmonic series from maxVal to minVal
+  # * "harmonic": different type of harmonic series from maxVal to minVal
+  # * "cubic": cubic spline interpolation for between maxVal and minVal
+  # More details at experiment.util.file._get_keep_ratios
+  spacing:
+    - type: "geometric"
+      numIntervals: 10
+      maxVal: 0.8
+      minVal: 0.10
+    - type: "linear"
+      numIntervals: 5
+      maxVal: 0.09
+      minVal: 0.05
+
+  # Specify whether at **each** prune ratio we should also retrain
+  # If we specify "-1" we will retrain for each prune ratio.
+  # If we specify "10", when there is 20 prune ratios specified in spacing we
+  # will only retrain after every 2nd round of pruning.
+  retrainIterations: -1
+#
+#
+#
+# *****************************************************************************
+# *****************************************************************************
+# ********************** A NOTE FOR THE "file" PARAMETER **********************
+# *****************************************************************************
+# *****************************************************************************
+#
+#
+# The file parameter can be specified anywhere and multiple times.
+# If the file parameter is provided we will first recursively load all the
+# configuration specified at the file location and the update that
+# initialization with whatever is provided on top of the file. Note that we
+# only recurse on dictionary parameters, not on list parameters....
+#
+#
+
+#
+#
+#
+# *****************************************************************************
+# *****************************************************************************
+# *********************** A NOTE ON DEFAULT PARAMETERS ************************
+# *****************************************************************************
+# *****************************************************************************
+#
+#
+# There is also a set of default parameters that are specified on top of the
+# parameters described above, which however hardly need any changes. Those
+# include
+#
+# * `blacklist`:
+#   A set of parameter keys that can be ignored when checking whether
+#   previously result folders are "compatible" and we can use the checkpoints
+#   there to start the experiments.
+#
+# * `coresets`:
+#   Some parameters specific to the coreset-inspired algorithms SiPP and PFP
+#
+# * `directories`:
+#   Directories to store and look results. In particular with defaults:
+#   ** `results`: `./data/results`
+#      --> store checkpoint and results here
+#   ** `trained_networks`: `./data/trained_networks`
+#      --> store pre-trained networks here.
+#   ** `training_data`: `./data/training`
+#      --> will be used to store/load data sets (mapped to `file_dir`) for
+#   datasets from `torchprune.util.datasets`
+#   ** `local_data`: `./local`
+#      --> download/extract datasets here.
+#
+# * `network_names`:
+#   A good-looking plot name for each pruning method. Maps class name to plot
+#   name. If not present, it will use the class name on the plots.
+# * `network_colors`:
+#   A good-looking plot color for each pruning method. Maps class name to
+#   matplotlib's named colors. If not present, it will use random named color.
+#
+#
+#  THE DEFAULT PARAMETERS ARE SPECIFIED AT
+#  experiment/param/default.yaml
+#
+#  You can customize these parameters just like any other parameter but don't
+#  need to if you don't want to.
+#
+#

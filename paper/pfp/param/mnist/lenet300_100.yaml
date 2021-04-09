@@ -1,0 +1,39 @@
+description: "LeNet 300 100 on MNIST"
+
+network:
+  name: "lenet300_100"
+  dataset: "MNIST"
+  outputSize: 10
+
+training:
+  file: "training/mnist/lenet.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SoftNet"
+    - "ThiNet"
+  datasetsToEvaluate: ["MNIST"]
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.05
+    maxVal: 0.3
+
+  spacing:
+    - type: "harmonic"
+      numIntervals: 0.8
+      minVal: 0.05 # numSamples =  minVal of parameters
+
+  retrainIterations: -1
+
+coresets:
+  deltaS: 1.0e-12 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-5 # 1.0e-4 previously
+  sizeOfT: 0.002 # ratio of validation set for evaluating error_C

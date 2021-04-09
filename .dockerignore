@@ -1,0 +1,10 @@
+# exclude data directory
+*
+!misc
+!param
+!src/*
+src/*__pycache__
+!sandbox
+sandbox/*__pycache__
+!paper
+paper/*__pycache__

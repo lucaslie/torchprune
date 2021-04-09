@@ -1,0 +1,48 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+batchSize: 32
+
+transformsTrain:
+  - type: SegRandomResize
+    kwargs: { min_size: 256, max_size: 1024 }
+  - type: SegRandomHorizontalFlip
+    kwargs: { flip_prob: 0.5 }
+  - type: SegRandomCrop
+    kwargs: { size: 513 }
+transformsTest:
+  - type: SegRandomResize
+    kwargs: { min_size: 513, max_size: 513 }
+  - type: SegCenterCrop
+    kwargs: { size: 513 }
+transformsFinal:
+  - type: SegToTensor
+    kwargs: {}
+  - type: SegNormalize
+    kwargs: { mean: [0.485, 0.456, 0.406], std: [0.229, 0.224, 0.225] }
+
+optimizer: "SGD"
+optimizerKwargs:
+  lr: 0.02
+  weight_decay: 1.0e-4
+  nesterov: False
+  momentum: 0.9
+
+numEpochs: 45
+
+lrSchedulers:
+  - type: PolyLR
+    stepKwargs: { max_epoch: 45 }
+    kwargs: {}
+
+loss: CrossEntropyLossWithAuxiliary
+lossKwargs: { reduction: mean, ignore_index: 255 }
+
+metricsTest:
+  - type: IoU
+    kwargs: {}
+  - type: TopK
+    kwargs: { topk: 1 }

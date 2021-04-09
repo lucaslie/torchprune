@@ -1,0 +1,31 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+# # #
+# Training setup from
+# https://github.com/huggingface/transformers/tree/master/examples/text-classification
+# # #
+
+batchSize: 32
+
+transformsTrain: []
+transformsTest: []
+transformsFinal: []
+
+optimizer: "AdamW"
+optimizerKwargs:
+  lr: 2.0e-5
+  weight_decay: 0.0
+
+numEpochs: 5
+
+lrSchedulers:
+  - type: PolyLR
+    stepKwargs: { max_epoch: 3 }
+    kwargs: { power: 1.0 }
+
+loss: LossFromInput
+lossKwargs: {}

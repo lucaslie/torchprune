@@ -1,0 +1,41 @@
+network:
+  name: "resnet110"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/resnet.yaml"
+  numEpochs: 0
+
+retraining:
+  numEpochs: 182
+
+experiments:
+  methods:
+    - "SiPPNet"
+    - "SiPPNetRand"
+    - "SiPPNetHybrid"
+    - "ThresNet"
+    - "SnipNet"
+
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.01
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      maxVal: 0.80
+      minVal: 0.01
+      numIntervals: 10
+
+  retrainIterations: -1
+
+coresets:
+  deltaS: 1.0e-16 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-11 # 1.0e-4 previously
+  sizeOfT: 0.1 # ratio of validation set for evaluating error_C

@@ -10,15 +10,15 @@ with open("README.md", "r") as fh:
     LONG_DESCRIPTION = fh.read()
 
 setuptools.setup(
-    name="pruning_experiments",
-    version="1.0.0",
-    author="The Provable Pruning Authors",
+    name="experiment",
+    version="2.0.0",
+    author="The torchprune authors",
     author_email="lucasl@mit.edu",
-    description="Experiments for provable pruning for neural networks",
+    description="Experiments for pytorch-based pruning for neural networks",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     licence="MIT Licence",
-    url="https://github.com/lucaslie/provable_pruning",
+    url="https://github.com/lucaslie/torchprune",
     package_data={"": ["*.yaml"]},
     install_requires=[
         "matplotlib",
@@ -37,5 +37,5 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Intended Audience :: Science/Research",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.6,<3.9",
 )

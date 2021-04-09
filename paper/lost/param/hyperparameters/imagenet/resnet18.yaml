@@ -1,0 +1,46 @@
+file: "paper/lost/param/imagenet/resnet18.yaml"
+# Make sure num_customization is divisible by num_workers during deployment!!!
+# Currently, we have 21 customizations here...
+customizations:
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet
+  - key: ["experiments", "datasetTest"]
+    value: ObjectNet
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Brightness_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Contrast_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Defocus_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Elastic_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Fog_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Frost_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Blur_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Gauss_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Glass_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Impulse_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Jpeg_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Motion_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Pixel_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Sat_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Shot_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Snow_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Spatter_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Speckle_3
+  - key: ["experiments", "datasetTest"]
+    value: ImageNet_C_Zoom_3

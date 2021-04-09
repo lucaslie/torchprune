@@ -1,6 +1,12 @@
 # The pruning packages
--e ./src/provable_pruning
+-e ./src/torchprune
 -e ./src/experiment
+
+# We need those with special tags unfortunately...
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.7.1+cu110
+torchvision==0.8.2+cu110
+torchaudio===0.7.2
 
 # Some extra requirements for the code base
 jupyter

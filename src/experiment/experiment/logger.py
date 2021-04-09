@@ -1,12 +1,13 @@
 """A module that contains our custom Logger classes to keep track."""
 import os.path
+import pathlib
 import copy
-import distutils.dir_util as dir_util
 
 import numpy as np
 from torch.utils import tensorboard as tb
 
-import provable_pruning.util.logging as pp_logging
+import torchprune.util.logging as tp_logging
+import torchprune.util.train as tp_train
 
 from .util import file as util_file
 from .util.grapher import Grapher
@@ -51,6 +52,7 @@ class Logger:
         self._colors = None
         self._name_ref = None
         self._color_ref = None
+        self.names_metrics = None
 
         # for printing consistent strings
         self._last_print_name = ""
@@ -66,6 +68,7 @@ class Logger:
 
         # directory management
         self._results_dir = None
+        self._stdout_dir = None
         self._reports_dir = None
         self._log_dir = None
         self._data_dir = None
@@ -82,6 +85,7 @@ class Logger:
         # these are stats
         # We keep them as separate dict so we can easily store/retrieve them.
         self._stats = {
+            "methods": None,
             "names": None,
             "time_tag": None,
             "error": None,
@@ -115,13 +119,19 @@ class Logger:
         self._x_min = None
         self._x_max = None
 
+        # worker info
+        self._num_workers = None
+        self._id_worker = None
+        self._is_primary_worker = None
+        self._is_collector_worker = None
+
         # running indices to keep track of experiment
         self.s_idx = None
         self.n_idx = None
         self.r_idx = None
         self.a_idx = None
 
-    def initialize_from_param(self, param):
+    def initialize_from_param(self, param, setup_print=True):
         """Initialize the logger directly with a set of parameters."""
         # call __init__ to reset all attributes to None
         self.__init__()
@@ -144,6 +154,7 @@ class Logger:
         self.global_tag = param["generated"]["globalTag"]
 
         # directory management
+        self._stdout_dir = param["generated"]["stdoutDir"]
         self._log_dir = param["generated"]["logDir"]
         self._data_dir = param["generated"]["dataDir"]
         self._reports_dir = param["generated"]["reportsDir"]
@@ -155,8 +166,15 @@ class Logger:
 
         # get names and colors
         self.names = self.param["generated"]["network_names"]
+        self.methods = self.param["experiments"]["methods"]
         self._colors = self.param["generated"]["network_colors"]
         self._class_to_names = self.param["network_names"]
+        self.names_metrics = [
+            metric.short_name
+            for metric in tp_train.get_test_metrics(
+                param["generated"]["training"]
+            )
+        ]
 
         # a few stats to keep track off
         self._num_repetitions = self.param["experiments"]["numRepetitions"]
@@ -168,6 +186,12 @@ class Logger:
         self._samples = np.array(self.param["generated"]["keepRatios"])
 
         self.responsibility = param["generated"]["responsibility"]
+
+        # worker info
+        self._num_workers = self.param["generated"]["numWorkers"]
+        self._id_worker = self.param["generated"]["idWorker"]
+        self._is_primary_worker = self.responsibility.flatten()[0]
+        self._is_collector_worker = np.all(self.responsibility)
 
         # MAIN STATS  #
         # Dimension convention for main stats:
@@ -229,73 +253,51 @@ class Logger:
             return
 
         # the old results directories from the generated parameters
-        results_dirs_prev = self.param["generated"]["resultsDirsPrev"]
+        results_dir_prev = self.param["generated"]["resultsDirPrev"]
 
-        def _copy_results_over():
-            # check if we are a collector (get to delete directories...)
-            is_collector = False
+        # now either create the directory or load the results
+        is_collective = False
 
-            # check if results already exist in old directories and move over
-            # previous data
-            for i, (dir_prev, dir_del, resp_other) in enumerate(
-                results_dirs_prev[::-1]
-            ):
-                # do some partial loading of stats first!
-                data_dir_prev = os.path.join(dir_prev, "data")
-                self._load_partial_state(data_dir_prev, resp_other)
-
-                # check if we get to delete a directory ever
-                is_collector |= dir_del
-
-                # if we can delete it and it's the first directory we can just
-                # use the move operator ... (more efficient)
-                if i == 0 and dir_del:
-                    os.rename(dir_prev, self._results_dir)
-                elif os.path.exists(dir_prev):
-                    # update=True flag will only copy existing files in the
-                    # destination if the file in the source has a newer time
-                    # tag than the files in the destination
-                    dir_util.copy_tree(
-                        dir_prev, self._results_dir, update=True
-                    )
-
-                    # in this case we can easily gather results without harm
-                    if dir_del:
-                        dir_util.remove_tree(dir_prev)
-
-                    # remove parameters file since the directory is not
-                    # complete or valid yet (we use param file to check for
-                    # validity of dir)
-                    os.remove(
-                        os.path.join(self._results_dir, "parameters.yaml")
-                    )
-
-            return is_collector
-
-        # either we copy results or we repurpose existing folder...
-        repurpose_dir = self.param["generated"]["repurposeDir"]
-
-        if repurpose_dir:
-            dir_prev, _, resp_other = results_dirs_prev[0]
-            data_dir_prev = os.path.join(dir_prev, "data")
-            self._load_partial_state(data_dir_prev, resp_other, load_com=True)
-        elif not _copy_results_over():
-            # we should remove data if we are not a collector job...
-            try:
-                dir_util.remove_tree(self._data_dir)
-            except FileNotFoundError:
-                pass
+        if results_dir_prev is None:
+            util_file.create_directory(self._results_dir)
+        else:
+            tag = f"{self.global_tag}_{self.dataset_test}"
+            data_dir = os.path.join(self._results_dir, "data")
+            # go through all data files that match our tag
+            # matches are either exact matches or match with _j*_i* for
+            # workers
+            matches = sorted(pathlib.Path(data_dir).glob(f"{tag}.npz"))
+            matches += sorted(
+                pathlib.Path(data_dir).glob(f"{tag}_j[0-9]*_i[0-9]*.npz")
+            )
+            for path in matches:
+                # load the data
+                data = self._load_custom_state(str(path.absolute()))
+                # load the data into our actual state
+                is_collective = self._load_partial_state(data)
+                # if we had a collective load, everything is loaded!
+                if is_collective:
+                    break
 
         # create the directory (if not already existing)
-        util_file.create_directory(self._results_dir)
+        util_file.create_directory(self._stdout_dir)
 
         # setup logging (with convenience function)
-        stdout_file = os.path.join(self._results_dir, "experiment.log")
-        self._stdout_logger = pp_logging.setup_stdout(stdout_file)
+        stdout_file = os.path.join(
+            self._stdout_dir,
+            f"experiment_{self.dataset_test}{self._get_worker_tag()}.log",
+        )
+        if setup_print:
+            self._stdout_logger = tp_logging.setup_stdout(stdout_file)
+        else:
+            self._stdout_logger = None
 
         # setup train logger
-        self._train_logger = pp_logging.TrainLogger(
-            self._log_dir, stdout_file, self.global_tag, self._class_to_names,
+        self._train_logger = tp_logging.TrainLogger(
+            self._log_dir,
+            stdout_file,
+            self.global_tag,
+            self._class_to_names,
         )
 
         # initialize writer
@@ -313,7 +315,7 @@ class Logger:
         )
 
         # write parameters to tensorboard as text
-        pp_logging.log_text(
+        tp_logging.log_text(
             self._writer_general,
             "parameters",
             self.param["generated"]["paramMd"],
@@ -324,12 +326,27 @@ class Logger:
         self.state_loaded = self._check_completeness(
             self._stats, self.responsibility
         )
-        if self.state_loaded:
-            if not repurpose_dir:
-                self.save_global_state()
+        # if we now have all the results but there was no collective load, we
+        # once store the collected results, so that next time we can
+        # collectively load everything.
+        if self.state_loaded and not is_collective:
+            print("Saving collected state.")
+            self.save_global_state()
 
-        # Save parameter file
-        util_file.write_parameters(self.param, self._results_dir)
+        # Save parameter file (as primary worker)
+        if self._is_primary_worker:
+            util_file.write_parameters(self.param, self._results_dir)
+
+    def _get_worker_tag(self):
+        """Get the worker tag ID info."""
+        if self._is_collector_worker:
+            return ""
+        else:
+            return f"_j{self._num_workers}_i{self._id_worker}"
+
+    def _get_npz_filename(self, tag):
+        """Get numpy file name for given custom partial tag."""
+        return f"{self.global_tag}_{tag}{self._get_worker_tag()}.npz"
 
     def update_global_state(
         self, s_idx=None, n_idx=None, r_idx=None, a_idx=None
@@ -346,20 +363,31 @@ class Logger:
 
     def _check_compatibility(self, data):
         """Check if _stats are compatible with data."""
-        compatible = True
 
-        # first check special _stats
-        compatible &= (self.names == data["names"]).all()
-        compatible &= (
-            "dataset_test" in data
-            and data["dataset_test"] == self.param["generated"]["dataset_test"]
-        )
-        compatible &= self.layout == data["layout"]
+        def _check():
+            compatible = True
 
-        # check if sizes agree.
-        compatible &= self.sizes.shape == data["sizes"].shape
+            # first check special _stats
+            if "methods" in data:
+                compatible &= (self.methods == data["methods"]).all()
+            else:
+                compatible &= (self.names == data["names"]).all()
+            compatible &= (
+                "dataset_test" in data
+                and self.dataset_test == data["dataset_test"]
+            )
+            compatible &= self.layout == data["layout"]
 
-        return compatible
+            # check if sizes agree.
+            compatible &= self.sizes.shape == data["sizes"].shape
+
+            return compatible
+
+        # checks may fail if data is not compatible, then return False
+        try:
+            return _check()
+        except ValueError:
+            return False
 
     def _check_completeness(self, data, resp=None):
         """Check if data contains sound and complete results."""
@@ -368,28 +396,31 @@ class Logger:
             mask = np.ones(self.error.shape, dtype=np.bool)
         else:
             mask = np.broadcast_to(resp[:, np.newaxis], self.error.shape)
-        return np.all(data["error"][mask] != 0.0)
+        return np.all(data["loss"][mask] != 0.0)
 
-    def _load_partial_state(self, data_dir_prev, resp_mask, load_com=False):
-        """Load the partial state according to responsibility masks."""
-        # nothing to load if there is no overlapping responsibility
-        if not np.any(resp_mask):
-            return
+    def _load_partial_state(self, data_prev):
+        """Load the partial state according to responsibility masks.
 
-        # otherwise let's go loading.
-        try:
-            data_prev = self.load_custom_state(
-                self.dataset_test, data_dir=data_dir_prev
-            )
-        except FileNotFoundError:
-            return
-
-        # double-check the shape
-        if self._stats["error"].shape != data_prev["error"].shape:
-            return
+        return True iff we just loaded *everything* with this previous data.
+        """
+        # check compatibility
+        if not self._check_compatibility(data_prev):
+            return False
 
         # now we can construct the mask to update the data
-        mask = np.broadcast_to(resp_mask[:, np.newaxis], self.error.shape)
+        mask_this = np.array(self.param["generated"]["responsibility"])
+        mask_this = np.broadcast_to(mask_this[:, np.newaxis], self.error.shape)
+        mask_other = data_prev["loss"] != 0.0
+
+        # only stats that are valid in both masks
+        mask = mask_this & mask_other
+
+        # check if this is a "collective" load
+        is_collective = np.all(mask)
+
+        # nothing to load if there is no overlap in responsibility
+        if not np.any(mask):
+            return is_collective
 
         # for total we need a different mask
         mask_total = np.any(mask, axis=(1, 2, 3))
@@ -425,10 +456,12 @@ class Logger:
             # now update it.
             self._stats[key][mask_k] = data_prev[key][mask_k]
 
-        # load comm report as well if desired
-        # (no checking though...)
-        if load_com and "stats_comm" in data_prev:
+        # load comm report as well
+        # (but only if it comes from a complete result set ...)
+        if is_collective and "stats_comm" in data_prev:
             self.stats_comm = data_prev["stats_comm"]
+
+        return is_collective
 
     def load_global_state(self):
         """Load the state of the logger from the numpy file."""
@@ -461,7 +494,11 @@ class Logger:
         # extract data to actual dictionary
         if data_dir is None:
             data_dir = self._data_dir
-        filename = os.path.join(data_dir, f"{self.global_tag}_{tag}.npz")
+        filename = os.path.join(data_dir, self._get_npz_filename(tag))
+        return self._load_custom_state(filename)
+
+    def _load_custom_state(self, filename):
+        """Load custom state simply based on filename."""
         data = {}
         data.update(np.load(filename, allow_pickle=True))
 
@@ -481,20 +518,24 @@ class Logger:
 
         return self._stats
 
-    def save_global_state(self):
+    def save_global_state(self, fast_saving=False):
         """Save the global state and generate all the plots."""
-        # make sure all directories exist
-        util_file.create_directory(self._data_dir)
-        util_file.create_directory(self._reports_dir)
-        util_file.create_directory(self._plot_dir)
+        if self._is_collector_worker and not fast_saving:
+            # create directories needed here.
+            util_file.create_directory(self._plot_dir)
 
-        # plot data and save plot
-        self.generate_plots()
+            # plot data and save plot
+            # plotting should not throw error if it doesn't work
+            try:
+                self.generate_plots()
+            except:  # noqa: E722
+                print("Generating plots failed!")
 
-        # store a few stats for usage
-        self.stats_comm.update(self.compute_stats())
+            # store a few stats for usage
+            self.stats_comm.update(self.compute_stats())
 
         # save data at the end
+        util_file.create_directory(self._data_dir)
         self.save_custom_state(self._stats, self.dataset_test)
 
         # see if the stuff we store is also complete ...
@@ -508,7 +549,7 @@ class Logger:
         """Store custom dictionary as well."""
         # data management
         data_file_name = os.path.join(
-            self._data_dir, f"{self.global_tag}_{tag}.npz"
+            self._data_dir, self._get_npz_filename(tag)
         )
 
         # make sure directory exists
@@ -522,13 +563,19 @@ class Logger:
         self.sizes_total[self.n_idx] = size_total
         self.flops_total[self.n_idx] = flops_total
 
-    def compute_stats(self):
+    def compute_stats(self, store_report=True):
         """Compute stats for "commensurate" accuracy."""
         # reference error and reference loss
         ref_idx = self.names.index("ReferenceNet")
         error_ref = self.error[:, :, :, ref_idx : ref_idx + 1]
         error5_ref = self.error5[:, :, :, ref_idx : ref_idx + 1]
         loss_ref = self.loss[:, :, :, ref_idx : ref_idx + 1]
+
+        # check that ref is complete
+        resp_ref = np.zeros_like(self.responsibility)
+        resp_ref[:, :, ref_idx] = self.responsibility[:, :, ref_idx]
+        if not self._check_completeness(self._stats, resp_ref):
+            raise ValueError("Valid ref data required.")
 
         # get the means
         e_mean_ref = error_ref.mean(0).mean(-2)[0].item()
@@ -539,32 +586,25 @@ class Logger:
         size_total = self.sizes_total.mean(0).item()
         flops_total = self.flops_total.mean(0).item()
 
+        # compute a error tensor for comparisons
+        # --> incomplete values mapped to np.Inf
+        error_comp = copy.deepcopy(self.error)
+
         # get best size level for desired commensurate level
         def _get_best(comm_level):
             # orig stats have dim (numNets, numIntervals, numRep, numAlg)
             # best stats have dim (numNets, numRep, numAlg)
-            if False:
-                # pick absolutely best performing to start with
-                idx_best = np.expand_dims(
-                    np.argmin(self.error, axis=1), axis=1
-                )
-                e_best = np.take_along_axis(self.error, idx_best, axis=1)
-                e5_best = np.take_along_axis(self.error5, idx_best, axis=1)
-                lo_best = np.take_along_axis(self.loss, idx_best, axis=1)
-                siz_best = np.take_along_axis(self.sizes, idx_best, axis=1)
-                flo_best = np.take_along_axis(self.flops, idx_best, axis=1)
-            else:
-                # start with unpruned performance as reference ...
-                e_best = np.repeat(error_ref[:, 0], self._num_algorithms, -1)
-                e5_best = np.repeat(error5_ref[:, 0], self._num_algorithms, -1)
-                lo_best = np.repeat(loss_ref[:, 0], self._num_algorithms, -1)
-                siz_best = np.ones_like(e_best)
-                flo_best = np.ones_like(e_best)
+            # start with unpruned performance as reference ...
+            e_best = np.ones_like(self.error[:, 0]) * np.Inf
+            e5_best = copy.deepcopy(e_best)
+            lo_best = copy.deepcopy(e_best)
+            siz_best = np.ones_like(e_best)
+            flo_best = np.ones_like(e_best)
 
             # now loop through intervals and check out the best ...
             for i in range(self._num_intervals):
                 # these ones satisfy the commensurate accuracy requirement
-                good_error = error_ref[:, i] + comm_level >= self.error[:, i]
+                good_error = error_ref[:, i] + comm_level >= error_comp[:, i]
 
                 # now check for smaller size
                 smaller = siz_best >= self.sizes[:, i]
@@ -592,8 +632,10 @@ class Logger:
                     f"Test Dataset: {self.dataset_test}",
                     f"Original Size: {size_total:.2E} parameters",
                     f"Original FLOPs: {flops_total:.2E}",
-                    f"Original Test Error: {e_mean_ref * 100.0:4.2f}%",
-                    f"Original Top 5 Test Error: {e5_mean_ref * 100.0:4.2f}%",
+                    f"Original {self.names_metrics[0]} Test Error: "
+                    + f"{e_mean_ref * 100.0:4.2f}%",
+                    f"Original {self.names_metrics[1]} Test Error: "
+                    + f"{e5_mean_ref * 100.0:4.2f}%",
                     f"Original Test Loss: {lo_mean_ref:6.4f}",
                     "\n",
                 ]
@@ -697,11 +739,13 @@ class Logger:
         md_str += _finish_ref_report()
 
         # store
-        full_tag = self.global_tag + "/" + "Commensurate Report"
-        full_name = f"report_{self.global_tag}_{self.dataset_test}.md"
-        pp_logging.log_text(self._writer_general, full_tag, md_str, 0)
-        with open(os.path.join(self._reports_dir, full_name), "w") as mdfile:
-            mdfile.write(md_str)
+        if store_report:
+            full_tag = self.global_tag + "/" + "Commensurate Report"
+            full_name = f"report_{self.global_tag}_{self.dataset_test}.md"
+            tp_logging.log_text(self._writer_general, full_tag, md_str, 0)
+            util_file.create_directory(self._reports_dir)
+            with open(os.path.join(self._reports_dir, full_name), "w") as mdf:
+                mdf.write(md_str)
 
         # also return the results for later use
         return {
@@ -741,8 +785,8 @@ class Logger:
         layers = layers[np.newaxis, :, np.newaxis, :]
 
         # grapher labels
-        y_label_error = "Test Accuracy"
-        y_label_error5 = "Top 5 Test Accuracy"
+        y_label_error = f"{self.names_metrics[0]} Test Accuracy"
+        y_label_error5 = f"{self.names_metrics[1]} Test Accuracy"
         y_label_loss = "Test Loss"
 
         # grapher stuff
@@ -829,13 +873,13 @@ class Logger:
             if store_figs:
                 self.log_image(
                     self._writer_general,
-                    self.dataset_test + " Test Acc" + tag,
+                    f"{self.dataset_test} Test {self.names_metrics[0]} {tag}",
                     img_err,
                     0,
                 )
                 self.log_image(
                     self._writer_general,
-                    self.dataset_test + "Top 5 Test Acc" + tag,
+                    f"{self.dataset_test} Test {self.names_metrics[1]} {tag}",
                     img_err5,
                     0,
                 )
@@ -909,7 +953,7 @@ class Logger:
         return graphers
 
     def get_train_logger(self):
-        """Get the pp_logging.TrainLogger instance."""
+        """Get the tp_logging.TrainLogger instance."""
         return self._train_logger
 
     def log_scalar(
@@ -923,7 +967,7 @@ class Logger:
         add_s_idx=False,
     ):
         """Log a scalar variable (wrapper for util)."""
-        pp_logging.log_scalar(
+        tp_logging.log_scalar(
             writer=writer,
             global_tag=self.global_tag,
             tag=tag,
@@ -938,7 +982,7 @@ class Logger:
         """Log one image (wrapper for util)."""
         # tag and log
         full_tag = self.global_tag + "/" + tag
-        pp_logging.log_image(writer, full_tag, image, step)
+        tp_logging.log_image(writer, full_tag, image, step)
 
     def store_test_stats(self, size, flops, test_handle):
         """Store the test results for the currently compressed network."""
@@ -955,24 +999,11 @@ class Logger:
         if self.a_idx == self.names.index("ReferenceNet"):
             idx_tuple = np.s_[self.n_idx, :, :, self.a_idx]
 
-        # see if we can store test results from full test results, otherwise
-        # compute them ourselves
-        idx_e = self.param["generated"]["retraining"]["numEpochs"] - 1
-        idx_tuple_e = idx_tuple + (idx_e,)
-        if (
-            np.all(self.loss_test[idx_tuple_e] != 0.0)
-            and np.all(self.error_test[idx_tuple_e] != 0.0)
-            and np.all(self.error5_test[idx_tuple_e] != 0.0)
-            and self.dataset_test == self.dataset_train
-        ):
-            loss = self.loss_test[idx_tuple_e]
-            err1 = self.error_test[idx_tuple_e]
-            err5 = self.error5_test[idx_tuple_e]
-        else:
-            loss, acc1, acc5 = test_handle()
-            loss = float(loss)
-            err1 = 1.0 - acc1
-            err5 = 1.0 - acc5
+        # compute test results
+        loss, acc1, acc5 = test_handle()
+        loss = float(loss)
+        err1 = 1.0 - acc1
+        err5 = 1.0 - acc5
 
         # store final test results
         self.loss[idx_tuple] = loss
@@ -1077,7 +1108,7 @@ class Logger:
         if not is_rerun:
             self.log_scalar(
                 self._writer[name],
-                "Test Error param",
+                f"{self.names_metrics[0]} Test Error param",
                 error_now * 100,
                 sizes_now * 1e4,
                 add_n_idx=True,
@@ -1086,7 +1117,7 @@ class Logger:
 
             self.log_scalar(
                 self._writer[name],
-                "Top 5 Test Error param",
+                f"{self.names_metrics[1]} Test Error param",
                 error5_now * 100,
                 sizes_now * 1e4,
                 add_n_idx=True,
@@ -1104,7 +1135,7 @@ class Logger:
 
             self.log_scalar(
                 self._writer[name],
-                "Test Error flops",
+                f"{self.names_metrics[0]} Test Error flops",
                 error_now * 100,
                 flops_now * 1e4,
                 add_n_idx=True,
@@ -1113,7 +1144,7 @@ class Logger:
 
             self.log_scalar(
                 self._writer[name],
-                "Top 5 Test Error flops",
+                f"{self.names_metrics[1]} Test Error flops",
                 error5_now * 100,
                 flops_now * 1e4,
                 add_n_idx=True,
@@ -1155,15 +1186,15 @@ class Logger:
     ):
         """Generate a diagnostics string to print in standard format."""
         metrics = []
-
+        names = self.names_metrics
         if error is not None:
-            metrics.append(f"Test Error: {error:5.2f}%")
+            metrics.append(f"{names[0]} Test Error: {error:5.2f}%")
         if error_diff is not None:
-            metrics.append(f"Test Error Diff: {error_diff:5.2f}%")
+            metrics.append(f"{names[0]} Test Error Diff: {error_diff:5.2f}%")
         if error5 is not None:
-            metrics.append(f"Top 5 Test Error: {error5:5.2f}%")
+            metrics.append(f"{names[1]} Test Error: {error5:5.2f}%")
         if error5_diff is not None:
-            metrics.append(f"Top 5 Test Error Diff: {error5_diff:5.2f}%")
+            metrics.append(f"{names[1]} Test Error Diff: {error5_diff:5.2f}%")
         if loss is not None:
             metrics.append(f"Test Loss: {loss:7.4f}")
         if size is not None:
@@ -1216,10 +1247,15 @@ class Logger:
                 layer, self.n_idx, self.s_idx, :, self.a_idx
             ] = total_per_layer
 
+            try:
+                value_to_log = float(total_per_layer) / float(total_budget)
+            except ZeroDivisionError:
+                value_to_log = 0
+
             self.log_scalar(
                 self._writer[self.names[self.a_idx]],
                 tag="Percentage of Sample Budget Per Layer",
-                value=float(total_per_layer) / float(total_budget) * 100.0,
+                value=value_to_log * 100.0,
                 step=layer + 1,
                 add_n_idx=True,
                 add_r_idx=True,
@@ -1231,8 +1267,15 @@ class Logger:
 
     def print_info(self, print_str):
         """Print a generic message w/o information about the current net."""
-        self._stdout_logger.write(print_str, "")
+        self._print(print_str, "")
 
     def print_net(self, print_str):
         """Print a message with the current net name as prefix to the msg."""
-        self._stdout_logger.write(print_str, self.names[self.a_idx])
+        self._print(print_str, self.names[self.a_idx])
+
+    def _print(self, print_str, name):
+        """Print with _stdout_logger if not None."""
+        if self._stdout_logger is None:
+            print(print_str)
+        else:
+            self._stdout_logger.write(print_str, name)

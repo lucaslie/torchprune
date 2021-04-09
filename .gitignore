@@ -107,7 +107,7 @@ ENV/
 .idea
 .project
 
-# Ignore data directory with results
+# Ignore everything inside data directory
 data
 
 # this is just a folder that is local storage, no need to sync
@@ -118,3 +118,6 @@ local
 
 # ignore VSCode config files
 .vscode
+
+# another temp results folder ...
+sandbox/results

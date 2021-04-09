@@ -1,0 +1,44 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+batchSize: 64
+
+transformsTrain:
+  - type: Pad
+    kwargs: { padding: 4 }
+  - type: RandomCrop
+    kwargs: { size: 32 }
+  - type: RandomHorizontalFlip
+    kwargs: {}
+transformsTest: []
+transformsFinal:
+  - type: ToTensor
+    kwargs: {}
+  - type: Normalize
+    kwargs: { mean: [0.4914, 0.4822, 0.4465], std: [0.2023, 0.1994, 0.2010] }
+
+optimizer: "SGD"
+optimizerKwargs:
+  lr: 0.01
+  weight_decay: 1.0e-4
+  nesterov: False
+  momentum: 0.9
+
+numEpochs: 40
+
+lrSchedulers:
+  - type: MultiStepLR
+    stepKwargs: { milestones: [25, 35] }
+    kwargs: { gamma: 0.1 }
+
+loss: "CrossEntropyLoss"
+lossKwargs: { reduction: mean }
+
+metricsTest:
+  - type: TopK
+    kwargs: { topk: 1 }
+  - type: TopK
+    kwargs: { topk: 5 }

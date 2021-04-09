@@ -1,0 +1,38 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+batchSize: 64
+
+transformsTrain: []
+transformsTest: []
+transformsFinal:
+  - type: ToTensor
+    kwargs: {}
+  - type: Normalize
+    kwargs: { mean: [0.1307], std: [0.3081] }
+
+optimizer: "SGD"
+optimizerKwargs:
+  lr: 0.01
+  weight_decay: 1.0e-4
+  nesterov: False
+  momentum: 0.9
+
+numEpochs: 40
+
+lrSchedulers:
+  - type: MultiStepLR
+    stepKwargs: { milestones: [30, 45] }
+    kwargs: { gamma: 0.1 }
+
+loss: "CrossEntropyLoss"
+lossKwargs: { reduction: mean }
+
+metricsTest:
+  - type: TopK
+    kwargs: { topk: 1 }
+  - type: TopK
+    kwargs: { topk: 5 }

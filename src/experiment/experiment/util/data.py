@@ -1,17 +1,17 @@
 """A module for all helper functions relevant to datasets."""
 import os
 import math
-import multiprocessing
 import warnings
 
-import torchvision.transforms as transforms
 import torch
 import numpy as np
+from transformers import default_data_collator
 
-import provable_pruning.util.datasets as dsets
+import torchprune.util.datasets as dsets
+from torchprune.util import transforms
+from torchprune.util import tensor
+
 from .file import create_directory
-
-PIN_MEMORY = True
 
 __all__ = ["get_data_loader"]
 
@@ -28,38 +28,28 @@ def get_data_loader(param, net, c_constant):
         tuple of data loader -- order is train, valid, test, S, T
 
     """
-    # grab a few parameters from the param dict
+    # set a few parameters
     dset_name = param["network"]["dataset"]
     dset_name_test = param["generated"]["datasetTest"]
-    mean = param["datasets"][dset_name]["mean"]
-    std_dev = param["datasets"][dset_name]["std"]
     data_dir = os.path.realpath(param["directories"]["training_data"])
-    valid_ratio = param["datasets"]["validSize"]
+    valid_ratio = 0.1
     batch_size = param["generated"]["training"]["batchSize"]
 
-    # have a list of basic transforms that needs to be applied regardless
-    transforms_base = [
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std_dev),
-    ]
+    # generate transform lists now
+    def _get_transforms(transforms_type):
+        return [
+            getattr(transforms, transform["type"])(**transform["kwargs"])
+            for transform in param["training"][transforms_type]
+        ]
 
-    # check training transforms from param file ...
-    transform_train = []
-    for transform in param["training"]["transformsTrain"]:
-        transform_train.append(eval("transforms." + transform))
-
-    # check test transforms from param file ...
-    transform_test = []
-    for transform in param["training"]["transformsTest"]:
-        transform_test.append(eval("transforms." + transform))
-
-    # add base transforms to the end
-    transform_train.extend(transforms_base)
-    transform_test.extend(transforms_base)
+    # get all the desired transforms
+    transform_train = _get_transforms("transformsTrain")
+    transform_test = _get_transforms("transformsTest")
+    transform_end = _get_transforms("transformsFinal")
 
     # put them in a composer
-    transform_test = transforms.Compose(transform_test)
-    transform_train = transforms.Compose(transform_train)
+    transform_test = transforms.SmartCompose(transform_test + transform_end)
+    transform_train = transforms.SmartCompose(transform_train + transform_end)
 
     # construct data sets (always just download to 'local_data')
     # WHY? Cloud or not, 'local_data' will live on the fastest storage device
@@ -73,19 +63,96 @@ def get_data_loader(param, net, c_constant):
         kwargs_dset = {
             "root": root,
             "train": train,
-            "download": True,
-            "transform": transform,
         }
-        # check if it's an instance of a DownlaodDataset...
+
+        # check if it's an instance of a DownloadDataset...
         dset_class = getattr(dsets, name)
-        if issubclass(dset_class, dsets.DownloadDataset):
+        if issubclass(
+            dset_class,
+            (
+                dsets.DownloadDataset,
+                dsets.CIFAR10_C_MixBase,
+                dsets.VOCSegmentation2011,
+                dsets.VOCSegmentation2012,
+            ),
+        ):
             kwargs_dset["file_dir"] = data_dir
+
+        # standard arguments on top
+        if issubclass(dset_class, dsets.BaseGlue):
+            kwargs_dset.update({"model_name": net.torchnet.model_name})
+        else:
+            kwargs_dset.update({"download": True, "transform": transform})
+
         # initialize and return instance
         return dset_class(**kwargs_dset)
 
+    def get_dataloader(dataset, shuffle=False, b_size=batch_size):
+        """Construct data loader."""
+        # ensure that we don't parallelize in data loader with glue.
+        # It does not play out well ...
+        # (also no need to do that for other small-scale datasets)
+        no_thread_classes = (
+            dsets.MNIST,
+            dsets.BaseGlue,
+        )
+        if isinstance(dataset, no_thread_classes):
+            num_threads = 0
+        else:
+            num_threads = 4
+
+        loader = torch.utils.data.DataLoader(
+            dataset=dataset,
+            batch_size=b_size,
+            num_workers=num_threads,
+            shuffle=shuffle,
+            pin_memory=True,
+            collate_fn=_glue_data_collator
+            if isinstance(dataset, dsets.BaseGlue)
+            else None,
+        )
+        return loader
+
+    # get test data and loader
+    set_test = get_dset(transform_test, train=False)
+    loader_test = get_dataloader(set_test)
+
+    # get train/validation dataset
+    # we have to do a manual split since true test data labels are not public
     set_train = get_dset(transform_train, train=True)
     set_valid = get_dset(transform_test, train=True)
-    set_test = get_dset(transform_test, train=False)
+
+    # cache etas
+    with torch.no_grad():
+        device = next(net.parameters()).device
+        for in_data, _ in loader_test:
+            net(tensor.to(in_data, device))
+            break
+    eta = torch.sum(torch.Tensor(net.num_etas)).item()
+    eta_star = torch.max(torch.Tensor(net.num_etas)).item()
+
+    # Get the size of T. 'sizeOfT' from the param hereby represents the ratio
+    # from the validation set we want to use
+    size_t_rel = param["coresets"]["sizeOfT"]
+    assert size_t_rel <= 0.3
+    size_t = int(math.ceil(size_t_rel * len(set_valid)))
+
+    # Get the theoretical size of S.
+    delta = param["coresets"]["deltaS"] / eta
+    size_s = math.ceil(c_constant * math.log(8.0 * eta_star / delta))
+
+    # Make sure the computed sizes are a multiple of the batch size
+    size_s = _round_to_batch_size(size_s, batch_size)
+    size_t = _round_to_batch_size(size_t, batch_size)
+
+    # Limit it according to size_t since size_t is based on the ratio and thus
+    # never runs overboard
+    size_s = min(size_s, size_t)
+
+    # make sure that valid ratio is big enough for both valid set and s set
+    valid_size = _round_to_batch_size(valid_ratio * len(set_train), batch_size)
+    valid_size += max(0, size_s + batch_size - valid_size)
+    valid_ratio = valid_size / len(set_train)
 
     # get train/valid split
     idx_train, idx_valid = _get_valid_split(
@@ -96,58 +163,29 @@ def get_data_loader(param, net, c_constant):
     set_train = torch.utils.data.Subset(set_train, idx_train)
     set_valid = torch.utils.data.Subset(set_valid, idx_valid)
 
-    # cache etas
-    device = next(net.parameters()).device
-    image = set_valid[0][0]
-    image = image.to(device).unsqueeze(0)  # do simulate batch dimension ...
-    net(image)
-    eta = torch.sum(torch.Tensor(net.num_etas)).item()
-    eta_star = torch.max(torch.Tensor(net.num_etas)).item()
-
-    # Get the theoretical size of S.
-    delta = param["coresets"]["deltaS"] / eta
-    size_s = math.ceil(c_constant * math.log(8.0 * eta_star / delta))
-
-    # Get the size of T. 'sizeOfT' from the param hereby represents the ratio
-    # from the validation set we want to use
-    size_t = int(math.ceil(param["coresets"]["sizeOfT"] * len(set_valid)))
-
-    # Make sure the computed sizes are a multiple of the batch size
-    size_s = _round_to_batch_size(size_s, batch_size)
-    size_t = _round_to_batch_size(size_t, batch_size)
-
-    # Further split validation set into valid set, S Set, T Set
-    set_valid, set_s, set_t = torch.utils.data.random_split(
-        set_valid, [len(set_valid) - size_s - size_t, size_s, size_t]
+    # Further split validation set into valid set, S Set
+    set_valid, set_s = torch.utils.data.random_split(
+        set_valid, [len(set_valid) - size_s, size_s]
     )
 
-    # create all the loaders now
-    num_threads = multiprocessing.cpu_count()
-
-    def get_dataloader(dataset, shuffle=False):
-        """Construct data loader."""
-        loader = torch.utils.data.DataLoader(
-            dataset=dataset,
-            batch_size=batch_size,
-            num_workers=num_threads,
-            shuffle=shuffle,
-            pin_memory=PIN_MEMORY,
-        )
-        return loader
-
+    # create the remaining loaders now
     loader_train = get_dataloader(set_train, True)
     loader_valid = get_dataloader(set_valid)
-    loader_test = get_dataloader(set_test)
-    loader_s = get_dataloader(set_s)
-    loader_t = get_dataloader(set_t)
+    loader_s = get_dataloader(set_s, b_size=min(4, batch_size))
 
     return {
         "train": loader_train,
         "val": loader_valid,
         "test": loader_test,
         "s_set": loader_s,
-        "t_set": loader_t,
     }
+
+
+def _glue_data_collator(features):
+    """Wrap the data collator when we return tuple from dataset."""
+    # since we are returning two dicts from the dataset, we have to zip it
+    inputs, labels = zip(*features)
+    return default_data_collator(inputs), torch.tensor(labels)
 
 
 def _get_valid_split(data_dir, dset_name, dset_len, ratio_valid, batch_size):

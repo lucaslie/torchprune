@@ -1,0 +1,43 @@
+file: "paper/lost/param/voc/deeplabv3_resnet50.yaml"
+# Currently, we have 20 customizations here...
+customizations:
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Blur_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Brightness_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Contrast_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Defocus_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Elastic_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Fog_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Frost_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Gauss_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Glass_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Impulse_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Jpeg_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Motion_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Pixel_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Sat_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Shot_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Snow_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Spatter_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Speckle_3
+  - key: ["experiments", "datasetTest"]
+    value: VOCSegmentation2011_C_Zoom_3

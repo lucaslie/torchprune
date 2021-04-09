@@ -1,0 +1,33 @@
+network:
+  name: "vgg16_bn"
+  dataset: "CIFAR10_C_Mix1"
+  outputSize: 10
+
+training:
+  file: "training/cifar/vgg.yaml"
+
+retraining:
+  numEpochs: 150
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SiPPNet"
+    - "ThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.4
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 16
+      maxVal: 0.80
+      minVal: 0.03
+
+  retrainIterations: -1

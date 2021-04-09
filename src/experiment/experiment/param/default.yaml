@@ -1,0 +1,95 @@
+# Default parameters that do not need to specified but can be overwritten
+# if wanted.
+
+# general keys in parameters that can be ignored
+blacklist: [
+    "methods",
+    "numRepetitions",
+    "numNets",
+
+    "directories", # different save directories
+
+    "blacklist", # the blacklist itself
+
+    "datasetTest", # the dataset used for testing (no effect on compression)
+    "metricsTest", # metrics don't affect compression either
+
+    "generated", # generated parameters
+
+    "network_colors", # plotting only
+    "network_names",
+    "plotting",
+  ]
+
+# coreset parameters
+coresets:
+  deltaS: 1.0e-16 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-11 # 1.0e-4 previously
+  sizeOfT: 0.1 # ratio of validation set for evaluating error_C
+
+# relative directories from where main.py was called
+directories:
+  results: "./data/results"
+  trained_networks: "./data/trained_networks"
+  training_data: "./data/training"
+  local_data: "./local"
+
+# names for networks to be displayed
+# if not provided, class name will be used.
+network_names:
+  ReferenceNet: ReferenceNet
+  NetHandle: ReferenceNet
+  EllOneAndTwoNet: $\frac{\ell_1+\ell_2}{2}$
+  EllOneNet: $\ell_1$
+  EllTwoNet: $\ell_2$
+  FilterThresNet: FT
+  FilterUniNet: Uniform Filters
+  PFPNet: PFP
+  PFPNetRand: PFPNet (rand)
+  PFPNetTop: PFPNet (partial)
+  SVDNet: SVD
+  SiPPNet: SiPPDet
+  SiPPNetHybrid: SiPPHybrid
+  SiPPNetRand: SiPPRand
+  SnipNet: SNIP
+  SoftNet: SoftNet
+  ThiNet: ThiNet
+  ThresNet: WT
+  UniNet: Uniform
+  MessiNet: Messi3
+  MessiNet5: Messi5
+  ProjectiveNet: PP
+  ProjectiveNetOptK: PP_K
+  ProjectiveNetErrorOnly: PP_ErrorOnly3
+  ProjectiveNetSimple: PP_Simple3
+  ProjectiveNetSimple5: PP_Simple5
+
+# colors for networks in plots
+# if not provided random named color from matplotlib will be used.
+network_colors:
+  ReferenceNet: black
+  NetHandle: black
+  EllOneAndTwoNet: purple
+  EllOneNet: blueviolet
+  EllTwoNet: magenta
+  FilterThresNet: lawngreen
+  FilterUniNet: "#708090"
+  PFPNet: cornflowerblue
+  PFPNetRand: black
+  PFPNetTop: red
+  SVDNet: green
+  SiPPNet: orange
+  SiPPNetHybrid: "#b4d8e7"
+  SiPPNetRand: blue
+  SnipNet: lightskyblue
+  SoftNet: red
+  ThiNet: purple
+  ThresNet: red
+  UniNet: "#808080"
+  MessiNet: magenta
+  MessiNet5: blueviolet
+  ProjectiveNet: orange
+  ProjectiveNetOptK: "#708090"
+  ProjectiveNetErrorOnly: blue
+  ProjectiveNetSimple: "#b4d8e7"
+  ProjectiveNetSimple5: "#808080"

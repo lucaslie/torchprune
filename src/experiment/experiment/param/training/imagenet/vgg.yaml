@@ -1,0 +1,16 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+file: "training/imagenet/common.yaml"
+
+batchSize: 16
+
+optimizer: "SGD"
+optimizerKwargs:
+  lr: 0.01
+  weight_decay: 5.0e-4
+  nesterov: False
+  momentum: 0.9

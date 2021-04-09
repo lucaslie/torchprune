@@ -1,0 +1,18 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+# # #
+# Training setup from
+# https://github.com/huggingface/transformers/tree/master/examples/text-classification
+# # #
+
+file: "training/glue/common.yaml"
+
+metricsTest:
+  - type: Pearson
+    kwargs: {}
+  - type: SpearmanRank
+    kwargs: {}

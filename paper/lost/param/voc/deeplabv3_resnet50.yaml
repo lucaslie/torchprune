@@ -1,0 +1,41 @@
+network:
+  name: "deeplabv3_resnet50"
+  dataset: "VOCSegmentation2011"
+  outputSize: 21
+
+training:
+  file: "training/voc/deeplab.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "PFPNet"
+    - "FilterThresNet"
+    - "SiPPNet"
+    - "ThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 2
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 10
+      maxVal: 0.8
+      minVal: 0.1
+    - type: "geometric"
+      numIntervals: 5
+      maxVal: 0.08
+      minVal: 0.03
+
+  retrainIterations: -1
+
+coresets:
+  deltaS: 1.0e-5 # failure prob to compute empirical sensitivity
+  deltaBest: 1.0e-11 # 1.0e-4 previously
+  sizeOfT: 0.1 # ratio of validation set for evaluating error_C

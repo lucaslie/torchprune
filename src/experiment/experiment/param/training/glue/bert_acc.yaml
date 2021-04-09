@@ -1,0 +1,18 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+# # #
+# Training setup from
+# https://github.com/huggingface/transformers/tree/master/examples/text-classification
+# # #
+
+file: "training/glue/common.yaml"
+
+metricsTest:
+  - type: TopK
+    kwargs: { topk: 1 }
+  - type: MCorr
+    kwargs: {}

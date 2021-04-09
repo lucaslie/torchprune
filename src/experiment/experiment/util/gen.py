@@ -1,7 +1,6 @@
 """A simple class that returns a random-initialized copy of a net."""
-import torchvision.models as imagenet
-import provable_pruning.util.models as custom
-from provable_pruning.util.net import NetHandle
+import torchprune.util.models as models
+from torchprune.util.net import NetHandle
 
 
 class NetGen(object):
@@ -19,26 +18,20 @@ class NetGen(object):
         """Return the network with the desired index."""
         return self.get_network()
 
-    def get_network(self, pretrained=False):
+    def get_network(self):
         """Return the network with the desired index."""
-        # retrieve network (pretrained for ImageNet and netIdx==0)
+        # get right module and kwargs for generating the network
         if "ImageNet" in self.dataset:
-            net = getattr(imagenet, self.arch)(
-                num_classes=self.output_size, pretrained=pretrained
-            )
-            # to avoid flatten operation that is incompatible with the
-            # _propagate_compression() function in BaseNet.py (doesn't alter
-            # network though)
-            if isinstance(net, imagenet.VGG):
-                # net = self.adapt_vgg(net)
-                net = custom.VGGWrapper(net)
-
-        elif "MNIST" in self.dataset:
-            net = getattr(custom, self.arch)(
-                num_classes=self.output_size, num_in_channels=1
-            )
+            model_module = models.imagenet
         else:
-            net = getattr(custom, self.arch)(num_classes=self.output_size)
+            model_module = models
+
+        kwargs = {"num_classes": self.output_size}
+        if "MNIST" in self.dataset:
+            kwargs["num_in_channels"] = 1
+
+        # retrieve network
+        net = getattr(model_module, self.arch)(**kwargs)
 
         # We don't need the logits ever (they appear in inception_v3)
         if hasattr(net, "aux_logits"):
