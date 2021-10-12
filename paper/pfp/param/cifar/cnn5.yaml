@@ -1,0 +1,33 @@
+network:
+  name: "cnn5"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/cnn5.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "ALDSNet"
+    - "ThresNet"
+    - "PFPNet"
+    - "FilterThresNet"
+    - "ThiNet"
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.08
+    maxVal: 0.95
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 15
+      maxVal: 0.90
+      minVal: 0.10
+
+  retrainIterations: -1

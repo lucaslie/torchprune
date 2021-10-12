@@ -4,7 +4,7 @@
 #                           #
 #############################
 
-batchSize: 32
+batchSize: 16
 
 transformsTrain:
   - type: SegRandomResize

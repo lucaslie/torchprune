@@ -1,5 +1,5 @@
 # SiPPing Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks
-[Lucas Liebenwein*](http://www.mit.edu/~lucasl/), 
+[Lucas Liebenwein*](https://people.csail.mit.edu/lucasl/), 
 [Cenk Baykal*](http://www.mit.edu/~baykal/), 
 [Igor Gilitschenski](https://www.gilitschenski.org/igor/), 
 [Dan Feldman](http://people.csail.mit.edu/dannyf/),
@@ -48,6 +48,12 @@ python -m experiment.main paper/sipp/cifar/cascade/resnet20.yaml
 
 ## Citations
 Please cite our paper when using this codebase.
+
+### Paper link
+
+[SiPPing Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks](https://arxiv.org/abs/1910.05422)
+
+### Bibtex
 ```
 @article{baykal2019sipping,
   title={SiPPing Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks},

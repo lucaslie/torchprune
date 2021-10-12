@@ -67,13 +67,19 @@ class BaseFilterAllocator(BaseAllocator):
 
         modules = net.compressible_layers
         self._num_layers = net.num_compressible_layers
-        self.register_buffer("_kernel_size", torch.Tensor())
-        self.register_buffer("_num_patches", torch.Tensor())
+        self.register_buffer("_in_features", None)
+        self.register_buffer("_out_features", None)
+        self.register_buffer("_kernel_size", None)
+        self.register_buffer("_kernel_shapes", None)
+        self.register_buffer("_num_patches", None)
         self._in_features = torch.zeros(
-            self._num_layers, dtype=torch.int, device=modules[0].weight.device
+            self._num_layers, dtype=torch.long, device=modules[0].weight.device
         )
         self._out_features = torch.zeros_like(self._in_features)
         self._kernel_size = torch.zeros_like(self._in_features)
+        self._kernel_shapes = torch.vstack(
+            [torch.ones_like(self._in_features) for _ in range(2)]
+        ).t()
         self._num_patches = torch.zeros_like(self._in_features)
 
         # 1.) out_mode == True:  sensitivity is w.r.t. output features.
@@ -82,9 +88,12 @@ class BaseFilterAllocator(BaseAllocator):
         self._out_mode = out_mode
 
         for ell, module in enumerate(modules):
-            self._in_features[ell] = self.get_num_features(module.weight, 1)
-            self._out_features[ell] = self.get_num_features(module.weight, 0)
-            self._kernel_size[ell] = module.weight[0, 0].numel()
+            weight = module.weight
+            self._in_features[ell] = self.get_num_features(weight, 1)
+            self._out_features[ell] = self.get_num_features(weight, 0)
+            self._kernel_size[ell] = weight[0, 0].numel()
+            if weight.dim() > 2:
+                self._kernel_shapes[ell] = torch.tensor(weight.shape[2:])
             self._num_patches[ell] = net.num_patches[ell]
 
     # estimate number of resulting weights

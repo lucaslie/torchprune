@@ -31,6 +31,9 @@ RUN touch /etc/bashrc_custom && \
 # tell bash to source the custom bashrc when a shell is started
 ENV BASH_ENV /etc/bashrc_custom
 
+# Ensure that GPUs are not visible by default
+ENV NVIDIA_VISIBLE_DEVICES none
+
 # Copy source files and requirements file
 COPY ./src /src
 COPY ./misc /misc

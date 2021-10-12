@@ -1,0 +1,9 @@
+network:
+  name: "resnet20"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/resnet.yaml"
+
+file: "paper/alds/param/cifar/retrain/common.yaml"

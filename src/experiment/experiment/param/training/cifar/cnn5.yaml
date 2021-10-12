@@ -1,0 +1,20 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+file: "training/cifar/common.yaml"
+
+batchSize: 128
+
+optimizer: "Adam"
+optimizerKwargs:
+  lr: 0.001
+
+numEpochs: 60
+
+lrSchedulers:
+  - type: MultiStepLR
+    stepKwargs: { milestones: [50] }
+    kwargs: { gamma: 0.1 }

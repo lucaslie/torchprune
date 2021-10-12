@@ -1,0 +1,9 @@
+network:
+  name: "wide_resnet50_2"
+  dataset: "ImageNet"
+  outputSize: 1000
+
+training:
+  file: "training/imagenet/wrn.yaml"
+
+file: "paper/alds/param/imagenet/retrainlittle/common.yaml"

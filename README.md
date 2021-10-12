@@ -1,8 +1,8 @@
 # Neural Network Pruning
-[Lucas Liebenwein](http://www.mit.edu/~lucasl/), 
+[Lucas Liebenwein](https://people.csail.mit.edu/lucasl/), 
 [Cenk Baykal](http://www.mit.edu/~baykal/),
+[Alaa Maalouf](https://www.linkedin.com/in/alaa-maalouf/),
 [Igor Gilitschenski](https://www.gilitschenski.org/igor/), 
-[Harry Lang](https://www.csail.mit.edu/person/harry-lang), 
 [Dan Feldman](http://people.csail.mit.edu/dannyf/),
 [Daniela Rus](http://danielarus.csail.mit.edu/)
 
@@ -15,6 +15,7 @@ This repository contains code to reproduce the results from the following
 papers: 
 | Paper | Venue | Title & Link | 
 | :---: | :---: | :---         |
+| **ALDS** | NeurIPS 2021 | [Compressing Neural Networks: Towards Determining the Optimal Layer-wise Decomposition](https://arxiv.org/abs/2107.11442) |
 | **Lost** | MLSys 2021 | [Lost in Pruning: The Effects of Pruning Neural Networks beyond Test Accuracy](https://proceedings.mlsys.org/paper/2021/hash/2a79ea27c279e471f4d180b08d62b00a-Abstract.html) |
 | **PFP** | ICLR 2020 | [Provable Filter Pruning for Efficient Neural Networks](https://openreview.net/forum?id=BJxkOlSYDH) |
 | **SiPP** | arXiv | [SiPPing Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks](https://arxiv.org/abs/1910.05422) |
@@ -34,16 +35,16 @@ about the paper and scripts and parameter configuration to reproduce the exact
 results from the paper.
 | Paper | Location |
 | :---: | :---:    |
+| **ALDS** | [paper/alds](./paper/alds) |
 | **Lost** | [paper/lost](./paper/lost) |
 | **PFP**  | [paper/pfp](./paper/pfp)   |
 | **SiPP** | [paper/sipp](./paper/sipp) |
 
 ## Setup
 We provide three ways to install the codebase:
-1. [Github repo + full conda
-   environment](./README.md#1.-github-repo)
-2. [Installation via pip](./README.md#2.-pip-installation)
-3. [Docker image](./README.md#3.-docker-image)
+1. [Github repo + full conda environment](#1-github-repo)
+2. [Installation via pip](#2-pip-installation)
+3. [Docker image](#3-docker-image)
 
 ### 1. Github Repo
 Clone the github repo:
@@ -97,14 +98,27 @@ using the codebase.
 | --- | --- |
 | [src/torchprune/README.md](./src/torchprune) | more details to prune neural networks, how to use and setup the data sets, how to implement custom pruning methods, and how to add your data sets and networks. |   
 | [src/experiment/README.md](./src/experiment) | more details on how to configure and run your own experiments, and more information on how to re-produce the results. |
-| [paper/lost/README.md](./paper/lost) | check out for more information on the [Lost](https://openreview.net/forum?id=BJxkOlSYDH) paper. |
+| [paper/alds/README.md](./paper/alds) | check out for more information on the [ALDS](https://arxiv.org/abs/2107.11442) paper. |
+| [paper/lost/README.md](./paper/lost) | check out for more information on the [Lost](https://proceedings.mlsys.org/paper/2021/hash/2a79ea27c279e471f4d180b08d62b00a-Abstract.html) paper. |
 | [paper/pfp/README.md](./paper/pfp) | check out for more information on the [PFP](https://openreview.net/forum?id=BJxkOlSYDH) paper. |
 | [paper/sipp/README.md](./paper/sipp) | check out for more information on the  [SiPP](https://arxiv.org/abs/1910.05422) paper. |
 
 ## Citations
 Please cite the respective papers when using our work.
 
-### [Lost In Pruning](https://openreview.net/forum?id=BJxkOlSYDH) (Pruning Study)
+### [Towards Determining the Optimal Layer-wise Decomposition](https://arxiv.org/abs/2107.11442)
+```
+@inproceedings{liebenwein2021alds,
+ author = {Lucas Liebenwein and Alaa Maalouf and Dan Feldman and Daniela Rus},
+ booktitle = {Advances in Neural Information Processing Systems},
+ title = {Compressing Neural Networks: Towards Determining the Optimal Layer-wise Decomposition},
+ url = {https://arxiv.org/abs/2107.11442},
+ volume = {34},
+ year = {2021}
+}
+```
+
+### [Lost In Pruning](https://proceedings.mlsys.org/paper/2021/hash/2a79ea27c279e471f4d180b08d62b00a-Abstract.html)
 ```
 @article{liebenwein2021lost,
 title={Lost in Pruning: The Effects of Pruning Neural Networks beyond Test Accuracy},
@@ -115,7 +129,7 @@ year={2021}
 }
 ```
 
-### [Provable Filter Pruning](https://openreview.net/forum?id=BJxkOlSYDH) (Filter Pruning)
+### [Provable Filter Pruning](https://openreview.net/forum?id=BJxkOlSYDH)
 ```
 @inproceedings{liebenwein2020provable,
 title={Provable Filter Pruning for Efficient Neural Networks},
@@ -126,7 +140,7 @@ url={https://openreview.net/forum?id=BJxkOlSYDH}
 }
 ```
 
-### [SiPPing Neural Networks](https://arxiv.org/abs/1910.05422) (Weight Pruning)
+### [SiPPing Neural Networks](https://arxiv.org/abs/1910.05422)
 ```
 @article{baykal2019sipping,
 title={SiPPing Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks},

@@ -1,0 +1,9 @@
+network:
+  name: "densenet22"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/densenet.yaml"
+
+file: "paper/alds/param/cifar/prune/common.yaml"

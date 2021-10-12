@@ -1,5 +1,5 @@
 # Provable Filter Pruning for Efficient Neural Networks
-[Lucas Liebenwein*](http://www.mit.edu/~lucasl/), 
+[Lucas Liebenwein*](https://people.csail.mit.edu/lucasl/), 
 [Cenk Baykal*](http://www.mit.edu/~baykal/), 
 [Harry Lang](https://www.csail.mit.edu/person/harry-lang), 
 [Dan Feldman](http://people.csail.mit.edu/dannyf/),
@@ -56,6 +56,10 @@ python -m experiment.main paper/pfp/param/cifar/resnet20.yaml
 ## Citation
 Please cite the following paper when using our work.
 
+### Paper link
+[Provable Filter Pruning for Efficient Neural Networks](https://openreview.net/forum?id=BJxkOlSYDH)
+
+### Bibtex
 ```
 @inproceedings{
 liebenwein2020provable,

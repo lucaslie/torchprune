@@ -252,7 +252,7 @@ class NetTrainer(object):
         """Load the rewind checkpoint (during retraining).
 
         Arguments:
-            net {BaseCompressedNet} -- compressed network to load state_dict
+            net {NetHandle} -- compressed network to load state_dict
             n_idx {int} -- network index
 
         """
@@ -314,6 +314,7 @@ class NetTrainer(object):
                 is_retraining=retraining,
                 num_epochs=params["numEpochs"],
                 steps_per_epoch=steps_per_epoch,
+                early_stop_epoch=params["earlyStopEpoch"],
                 metrics_test=metrics_test,
                 n_idx=n_idx,
                 r_idx=r_idx,
@@ -446,7 +447,7 @@ def train_with_worker(
     if is_distributed and not is_cpu:
         net_handle = nn.SyncBatchNorm.convert_sync_batchnorm(net_handle)
         net_parallel = nn.parallel.DistributedDataParallel(
-            net_handle, device_ids=[gpu_id]
+            net_handle, device_ids=[gpu_id], find_unused_parameters=True
         )
     else:
         net_parallel = net_handle
@@ -461,6 +462,9 @@ def train_with_worker(
 
     # get test metrics
     metrics_test = get_test_metrics(params)
+
+    # setup gradient scaler for AMP
+    scaler = torch.cuda.amp.GradScaler(enabled=params["enableAMP"])
 
     # get a proper distributed train loader
     batch_size = int(params["batchSize"] / world_size)
@@ -499,7 +503,13 @@ def train_with_worker(
 
     # Load the checkpoint if available
     found_checkpoint, start_epoch = load_checkpoint(
-        file_name_checkpoint, net_handle, train_logger, optimizer, loc
+        file_name_checkpoint,
+        net_handle,
+        train_logger,
+        optimizer,
+        scaler,
+        schedulers,
+        loc,
     )
 
     # wait for all processes to load the checkpoint
@@ -510,17 +520,17 @@ def train_with_worker(
     if not found_checkpoint:
         start_epoch = params["startEpoch"]
 
-    # step through learning rate scheduler to get it to current start epoch
-    # it will throw a warning since lr_scheduler is supposed to be called after
-    # optimizer.step(). However, it is okay in this setting, e.g., for
-    # weight rewinding. It is the most stable approach to bringing the
-    # up scheduler to the desired learning rate.
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        for epoch in range(start_epoch):
-            for _ in range(len(train_loader)):
-                for scheduler in schedulers:
-                    scheduler.step()
+        # step through learning rate scheduler to get it to current start epoch
+        # it will throw a warning since lr_scheduler is supposed to be called
+        # after optimizer.step(). However, it is okay in this setting, e.g.,
+        # for weight rewinding. It is the most stable approach to bringing the
+        # up scheduler to the desired learning rate.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for epoch in range(start_epoch):
+                for _ in range(len(train_loader)):
+                    for scheduler in schedulers:
+                        scheduler.step()
 
     # make it faster
     if not is_cpu:
@@ -534,13 +544,25 @@ def train_with_worker(
 
         # save checkpoint at the end of every epoch with 0 worker
         save_checkpoint(
-            file_name_checkpoint, net_handle, epoch, train_logger, optimizer
+            file_name_checkpoint,
+            net_handle,
+            epoch,
+            train_logger,
+            optimizer,
+            scaler,
+            schedulers,
         )
 
         # check whether we should store rewind checkpoint
         if not retraining and params["retrainStartEpoch"] == epoch:
             save_checkpoint(
-                file_name_rewind, net_handle, epoch, train_logger, optimizer
+                file_name_rewind,
+                net_handle,
+                epoch,
+                train_logger,
+                optimizer,
+                scaler,
+                schedulers,
             )
 
         # potentially store early-stopping checkpoint
@@ -548,7 +570,7 @@ def train_with_worker(
         # logger convention is "epoch corresponds to end"
         # hence we need the -1
         if train_logger is not None and train_logger.is_best_epoch(epoch - 1):
-            save_checkpoint(file_name_best, net_handle, epoch, None, None)
+            save_checkpoint(file_name_best, net_handle, epoch)
 
     # do the distributed training
     t_training = -time.time()
@@ -570,6 +592,8 @@ def train_with_worker(
             epoch=epoch,
             worker_device=worker_device,
             net_parallel=net_parallel,
+            scaler=scaler,
+            enable_amp=params["enableAMP"],
             net_handle=net_handle if retraining else None,
             train_logger=train_logger if gpu_id == 0 else None,
         )
@@ -610,6 +634,8 @@ def _train_one_epoch(
     epoch,
     worker_device,
     net_parallel,
+    scaler,
+    enable_amp,
     net_handle=None,
     train_logger=None,
 ):
@@ -636,10 +662,12 @@ def _train_one_epoch(
         t_optim -= time.time()
 
         optimizer.zero_grad()  # zero the gradient buffer
-        outputs = net_parallel(images)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
+        with torch.cuda.amp.autocast(enabled=enable_amp):
+            outputs = net_parallel(images)
+            loss = criterion(outputs, targets)
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
 
         t_optim += time.time()
 
@@ -768,12 +796,24 @@ def get_test_metrics(params):
     ]
 
 
-def save_checkpoint(file_name, net, epoch, train_logger=None, optimizer=None):
+def save_checkpoint(
+    file_name,
+    net,
+    epoch,
+    train_logger=None,
+    optimizer=None,
+    scaler=None,
+    schedulers=None,
+):
     """Save checkpoint of network."""
     # Populate checkpoint
     checkpoint = {
         "net": net.state_dict(),
         "optimizer": None if optimizer is None else optimizer.state_dict(),
+        "scaler": None if scaler is None else scaler.state_dict(),
+        "schedulers": None
+        if schedulers is None
+        else [sched.state_dict() for sched in schedulers],
         "epoch": epoch,
         "tracker_train": None,
         "tracker_test": None,
@@ -800,6 +840,8 @@ def load_checkpoint(
     net,
     train_logger=None,
     optimizer=None,
+    scaler=None,
+    schedulers=None,
     loc=None,
     epoch_desired=None,
 ):
@@ -819,6 +861,15 @@ def load_checkpoint(
             net.load_state_dict(chkpt["net"], strict=False)
             if optimizer is not None:
                 optimizer.load_state_dict(chkpt["optimizer"])
+            if scaler is not None and "scaler" in chkpt:
+                scaler.load_state_dict(chkpt["scaler"])
+            if (
+                schedulers is not None
+                and "schedulers" in chkpt
+                and chkpt["schedulers"] is not None
+            ):
+                for sched, ckpt_s in zip(schedulers, chkpt["schedulers"]):
+                    sched.load_state_dict(ckpt_s)
             if _check_tracker(chkpt, "tracker_train"):
                 train_logger.tracker_train.set(*chkpt["tracker_train"])
             if _check_tracker(chkpt, "tracker_test"):

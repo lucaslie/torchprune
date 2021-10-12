@@ -38,7 +38,7 @@ class PFPRandAllocator(BaseFilterAllocator, SiPPRandAllocator):
         # get budget according to sample complexity
         eps = arg
         m_budget = self._get_sample_complexity(eps)
-        m_budget = self._get_unique_samples(m_budget).int()
+        m_budget = self._get_unique_samples(m_budget).to(self._in_features)
 
         # assign budget to in features if smaller
         in_features = copy.deepcopy(self._in_features)
@@ -107,5 +107,5 @@ class PFPTopAllocator(PFPRandAllocator):
         adapted = float(adapt_sample_size(probs, size_pruned))
 
         idx = probs >= 1.0 / adapted
-        ret = min(torch.sum(idx).int(), size_pruned)
+        ret = min(torch.sum(idx).to(size_pruned), size_pruned)
         return ret

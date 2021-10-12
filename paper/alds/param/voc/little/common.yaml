@@ -1,0 +1,29 @@
+retraining:
+  # 10% retraining
+  startEpoch: 40
+
+experiments:
+  methods:
+    - "ALDSNet"
+    - "PCANet"
+    - "SVDFrobeniusNet"
+    - "SVDNet"
+    - "LearnedRankNetScheme0"
+    - "FilterThresNet"
+    - "PFPNet"
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.10
+    maxVal: 0.90
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 10
+      maxVal: 0.85
+      minVal: 0.12
+
+  retrainIterations: -1

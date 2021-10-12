@@ -1,0 +1,37 @@
+network:
+  name: "mobilenet_v2"
+  dataset: "ImageNet"
+  outputSize: 1000
+
+training:
+  file: "training/imagenet/mbv2.yaml"
+
+retraining:
+  startEpoch: 300
+  numEpochs: 600
+
+experiments:
+  methods:
+    - "ALDSNet"
+    - "PCANet"
+    - "SVDFrobeniusNet"
+    - "SVDNet"
+    - "LearnedRankNetScheme0"
+    - "FilterThresNet"
+    - "PFPNet"
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 1
+
+  plotting:
+    minVal: 0.18
+    maxVal: 0.82
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 5
+      maxVal: 0.8
+      minVal: 0.4
+
+  retrainIterations: -1

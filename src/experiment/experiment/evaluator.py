@@ -665,8 +665,9 @@ class Evaluator(object):
         self._logger.print_info("Dataloader Information:")
         for name, loader in self._loaders.items():
             self._logger.print_info(
-                f"{name:5} data: number of batches: {len(loader):3}, "
-                f"number of data points: {len(loader.dataset):3}"
+                f"{name:5} data: # batches: {len(loader):3}, "
+                f"# data points: {len(loader.dataset):3}, "
+                f"# workers: {loader.num_workers}"
             )
         self._logger.print_info("")
 

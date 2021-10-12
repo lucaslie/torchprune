@@ -11,7 +11,7 @@ from PIL import Image
 import imagecorruptions
 import numpy as np
 import torchvision.datasets
-from torchvision.datasets.utils import download_and_extract_archive
+from .download import download_and_extract_archive
 
 
 # VOC_C variations...

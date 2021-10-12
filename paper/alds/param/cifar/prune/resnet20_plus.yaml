@@ -1,0 +1,30 @@
+network:
+  name: "resnet20"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/resnet.yaml"
+
+file: "paper/alds/param/cifar/prune/common.yaml"
+
+experiments:
+  methods:
+    - "ALDSNetPlus"
+    - "ALDSNet"
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.2
+    maxVal: 0.95
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 20
+      maxVal: 0.97
+      minVal: 0.2
+
+  retrainIterations: -1

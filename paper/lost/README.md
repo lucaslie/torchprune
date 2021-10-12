@@ -1,5 +1,5 @@
 # Lost in Pruning: The Effects of Pruning Neural Networks beyond Test Accuracy
-[Lucas Liebenwein](http://www.mit.edu/~lucasl/), 
+[Lucas Liebenwein](https://people.csail.mit.edu/lucasl/), 
 [Cenk Baykal](http://www.mit.edu/~baykal/), 
 [Brandon Carter](http://brandoncarter.me/),
 [David Gifford](http://be.mit.edu/directory/david-gifford),
@@ -132,6 +132,10 @@ folder.
 ## Citation
 Please cite the following paper when using our work.
 
+### Paper link
+[Lost in Pruning: The Effects of Pruning Neural Networks beyond Test Accuracy](https://proceedings.mlsys.org/paper/2021/hash/2a79ea27c279e471f4d180b08d62b00a-Abstract.html)
+
+### Bibtex
 ```
 @article{liebenwein2021lost,
 title={Lost in Pruning: The Effects of Pruning Neural Networks beyond Test Accuracy},

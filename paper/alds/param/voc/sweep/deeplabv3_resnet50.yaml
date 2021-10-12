@@ -1,0 +1,21 @@
+# Base Experiment is the classic retraining experiment
+file: "paper/alds/param/voc/retrain/deeplabv3_resnet50.yaml"
+
+# now we vary the amount of retraining
+customizations:
+  - key: ["retraining", "startEpoch"]
+    value: 0 # 100%
+  - key: ["retraining", "startEpoch"]
+    value: 22 # 50%
+  - key: ["retraining", "startEpoch"]
+    value: 34 # 25%
+  - key: ["retraining", "startEpoch"]
+    value: 38 # 15%
+  - key: ["retraining", "startEpoch"]
+    value: 40 # 10%
+  - key: ["retraining", "startEpoch"]
+    value: 43 # 5%
+  - key: ["retraining", "startEpoch"]
+    value: 44 # 2%
+  - key: ["retraining", "startEpoch"]
+    value: 45 # 0%

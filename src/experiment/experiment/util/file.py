@@ -12,15 +12,6 @@ import numpy as np
 import matplotlib.colors as mcolors
 
 
-def create_directory(path):
-    """Create directory if it doesn't exist yet."""
-    try:
-        os.makedirs(path)
-    except OSError:
-        if not os.path.isdir(path):
-            raise
-
-
 def write_parameters(param, dir, file="parameters.yaml"):
     """Write parameters to desired directory and file."""
     # don't dump generated parameters (pop them from a copy)
@@ -271,6 +262,17 @@ def _generate_remaining_param(
     generated["training"] = copy.deepcopy(param["training"])
     generated["training"]["startEpoch"] = 0
     generated["training"]["outputSize"] = param["network"]["outputSize"]
+    if "earlyStopEpoch" not in generated["training"]:
+        generated["training"]["earlyStopEpoch"] = generated["training"][
+            "numEpochs"
+        ]
+    if "enableAMP" not in generated["training"]:
+        generated["training"]["enableAMP"] = True
+
+    if "testBatchSize" not in generated["training"]:
+        generated["training"]["testBatchSize"] = generated["training"][
+            "batchSize"
+        ]
 
     generated["retraining"] = copy.deepcopy(generated["training"])
     generated["retraining"].update(param["retraining"])

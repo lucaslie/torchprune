@@ -10,7 +10,7 @@ from .cnn5 import cnn5
 from .bert import bert
 
 # import cifar nets
-from .cnn.models.cifar import *
+from ..external.cnn.models.cifar import *
 
 # import imagenet models
 # (give them a sub-module because of name-clashes otherwise)

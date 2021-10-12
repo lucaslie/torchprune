@@ -1,0 +1,30 @@
+network:
+  name: "resnet18"
+  dataset: "ImageNet"
+  outputSize: 1000
+
+training:
+  file: "training/imagenet/resnet.yaml"
+
+file: "paper/alds/param/imagenet/prune/common.yaml"
+
+experiments:
+  methods:
+    - "ALDSNetPlus"
+    - "ALDSNet"
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.3
+    maxVal: 0.99
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 15
+      maxVal: 0.98
+      minVal: 0.15
+
+  retrainIterations: -1

@@ -1,0 +1,9 @@
+network:
+  name: "wrn16_8"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/wrn.yaml"
+
+file: "paper/alds/param/cifar/retrainablation/common.yaml"

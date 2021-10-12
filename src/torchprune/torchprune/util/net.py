@@ -56,9 +56,12 @@ class NetHandle(nn.Module):
 
         # then register linear and conv layers.
         for module in self.torchnet.modules():
-            if isinstance(module, (nn.Conv2d, nn.Linear)):
-                self.compressible_layers.append(module)
-                self.num_weights.append(module.weight.data.numel())
+            if not isinstance(module, (nn.Conv2d, nn.Linear)):
+                continue
+            if hasattr(module, "groups") and module.groups > 1:
+                continue
+            self.compressible_layers.append(module)
+            self.num_weights.append(module.weight.data.numel())
 
     def size(self):
         """Get total number of parameters in network."""
@@ -117,8 +120,8 @@ class NetHandle(nn.Module):
             # bools. For more information, see:
             # https://github.com/pytorch/pytorch/issues/24137
             pattern = (param.data == 0.0).byte()
-            if name in self._buffers:
-                self._buffers[name] = pattern
+            if hasattr(self, name):
+                setattr(self, name, pattern)
             else:
                 self.register_buffer(name, pattern)
 
@@ -128,7 +131,7 @@ class NetHandle(nn.Module):
         for idx, param in enumerate(param_iter):
             key = f"param{idx}"
             # TODO: remove bool when above is fixed!
-            param.data.masked_fill_(self._buffers[key].bool(), 0.0)
+            param.data.masked_fill_(getattr(self, key).bool(), 0.0)
 
     def cache_etas(self, x=None):
         """Cache etas and patches to store."""

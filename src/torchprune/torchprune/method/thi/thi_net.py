@@ -53,9 +53,7 @@ class ThiNet(FilterNet):
 
         device = self.compressed_net.compressible_layers[0].weight.device
 
-        # get a loader with mini-batch size 1
-        loader_mini = tensor.MiniDataLoader(self._loader_s, 1)
-        num_batches = len(loader_mini)
+        num_batches = len(self._loader_s)
 
         # do a forward pass to obtain sensitivities
         for i_batch, (images, _) in enumerate(self._loader_s):

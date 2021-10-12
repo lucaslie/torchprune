@@ -47,7 +47,13 @@ network_names:
   PFPNet: PFP
   PFPNetRand: PFPNet (rand)
   PFPNetTop: PFPNet (partial)
+  PCANet: PCA
   SVDNet: SVD
+  SVDNuclearNet: SVD-NucEnergy
+  SVDFrobeniusNet: SVD-Energy
+  SVDErrorNet: SVD-Error
+  LearnedRankNet: L-Rank-Scheme1
+  LearnedRankNetScheme0: L-Rank
   SiPPNet: SiPPDet
   SiPPNetHybrid: SiPPHybrid
   SiPPNetRand: SiPPRand
@@ -58,11 +64,13 @@ network_names:
   UniNet: Uniform
   MessiNet: Messi3
   MessiNet5: Messi5
-  ProjectiveNet: PP
-  ProjectiveNetOptK: PP_K
-  ProjectiveNetErrorOnly: PP_ErrorOnly3
-  ProjectiveNetSimple: PP_Simple3
-  ProjectiveNetSimple5: PP_Simple5
+  ALDSNet: ALDS
+  ALDSNetPlus: ALDS+
+  ALDSNetOptK: ALDS-K
+  ALDSNetErrorOnly: ALDS-Error3
+  ALDSNetSimple: ALDS-Simple3
+  ALDSNetSimple5: ALDS-Simple5
+  ALDSNetOne: "ALDS (One-shot)"
 
 # colors for networks in plots
 # if not provided random named color from matplotlib will be used.
@@ -77,7 +85,13 @@ network_colors:
   PFPNet: cornflowerblue
   PFPNetRand: black
   PFPNetTop: red
-  SVDNet: green
+  PCANet: cyan
+  SVDNet: magenta
+  SVDNuclearNet: red
+  SVDFrobeniusNet: purple
+  SVDErrorNet: blueviolet
+  LearnedRankNet: green
+  LearnedRankNetScheme0: green
   SiPPNet: orange
   SiPPNetHybrid: "#b4d8e7"
   SiPPNetRand: blue
@@ -86,10 +100,11 @@ network_colors:
   ThiNet: purple
   ThresNet: red
   UniNet: "#808080"
-  MessiNet: magenta
-  MessiNet5: blueviolet
-  ProjectiveNet: orange
-  ProjectiveNetOptK: "#708090"
-  ProjectiveNetErrorOnly: blue
-  ProjectiveNetSimple: "#b4d8e7"
-  ProjectiveNetSimple5: "#808080"
+  MessiNet: darkcyan
+  ALDSNet: orange
+  ALDSNetPlus: "#bf6900"
+  ALDSNetOptK: "#708090"
+  ALDSNetErrorOnly: blue
+  ALDSNetSimple: "#b4d8e7"
+  ALDSNetSimple5: "#808080"
+  ALDSNetOne: goldenrod

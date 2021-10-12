@@ -162,6 +162,13 @@ class CompressedNet(BaseCompressedNet):
         del self.pruners
         self.pruners = nn.ModuleList()
 
+    def _prepare_compression(self):
+        """Prepare compression step.
+
+        This function is called independent of the type of compression right at
+        the beginning of the compression.
+        """
+
     def _initialize_compression(self):
         """Initialize the compression.
 
@@ -222,6 +229,9 @@ class CompressedNet(BaseCompressedNet):
         the expensive part of pruning is the initialization where we compute
         the sensitivities but we can re-use that.
         """
+        # do an initial pre-processing step
+        self._prepare_compression()
+
         # check if we start from original, otherwise we need to remember
         # weights!
         if from_original:
@@ -248,7 +258,7 @@ class CompressedNet(BaseCompressedNet):
                 return f_opt_lookup[kr_compress]
 
             # compress
-            self._compress_once(kr_compress, backup_net)
+            b_per_layer = self._compress_once(kr_compress, backup_net)
 
             # check resulting keep ratio
             kr_actual = (
@@ -262,15 +272,31 @@ class CompressedNet(BaseCompressedNet):
                 kr_diff = 0.0
 
             # store look-up
-            f_opt_lookup[kr_compress] = kr_diff
+            f_opt_lookup[kr_compress] = (kr_diff, b_per_layer)
 
-            return kr_diff
+            return f_opt_lookup[kr_compress]
+
+        # some times the keep ratio is pretty accurate
+        # so let's try with the correct keep ratio first
+        try:
+            # we can either run right away or update the boundaries for the
+            # binary search to make it faster.
+            kr_diff_nominal, b_per_layer = _f_opt(keep_ratio)
+            if kr_diff_nominal == 0.0:
+                return b_per_layer
+            elif kr_diff_nominal > 0.0:
+                kr_max = keep_ratio
+            else:
+                kr_min = keep_ratio
+
+        except (ValueError, RuntimeError):
+            pass
 
         # run the root search
         # if it fails we simply pick the best value from the look-up table
         try:
             kr_opt = optimize.brentq(
-                _f_opt,
+                lambda kr: _f_opt(kr)[0],
                 kr_min,
                 kr_max,
                 maxiter=20,
@@ -281,7 +307,8 @@ class CompressedNet(BaseCompressedNet):
         except (ValueError, RuntimeError):
             kr_diff_opt = float("inf")
             kr_opt = None
-            for kr_compress, kr_diff in f_opt_lookup.items():
+            for kr_compress, kr_diff_b_per_layer in f_opt_lookup.items():
+                kr_diff = kr_diff_b_per_layer[0]
                 if abs(kr_diff) < abs(kr_diff_opt):
                     kr_diff_opt = kr_diff
                     kr_opt = kr_compress
@@ -376,13 +403,18 @@ class CompressedNet(BaseCompressedNet):
         self.compressed_net.eval()
 
         # do a couple of forward+backward passes
+        at_least_one_batch = False
         with torch.enable_grad():
             for images, targets in self._loader_s:
+                if len(images) < 2:
+                    continue
+                at_least_one_batch = True
                 images = tensor.to(images, device, non_blocking=True)
                 targets = tensor.to(targets, device, non_blocking=True)
                 outs = self.compressed_net(images)
                 loss = self._loss_handle(outs, targets)
                 loss.backward()
+        assert at_least_one_batch, "No batch with more than one data point!"
 
         # post-process gradients to set respective weights to zero
         some_grad_none = False

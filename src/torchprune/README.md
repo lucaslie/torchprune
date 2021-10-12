@@ -187,6 +187,12 @@ also abstract interfaces to add your own pruning methods.
 
 ### Implemented pruning methods
 
+#### **Automatic Layer-wise Decomposition Selector (ALDS)** (Ours)
+
+* Paper: 
+  [Compressing Neural Networks: Towards Determining the Optimal Layer-wise Decomposition](https://arxiv.org/abs/2107.11442)
+* Code:[torchprune/method/alds](./torchprune/method/alds)
+
 #### **Provable Filter Pruning (PFP)** (Ours)
 * Paper: 
   [Provable Filter Pruning for Efficient Neural
@@ -204,7 +210,11 @@ also abstract interfaces to add your own pruning methods.
 * Fake-pruned network that spoofs pruning and can be used to compare the
   unpruned network with pruned networks. It is also being recognized by 
   the codebase as "fake-pruned"
-* Code: [torchprune/method/ref_net](./torchprune/method/ref)
+* Code: [torchprune/method/ref](./torchprune/method/ref)
+
+#### **Messi**
+* Paper: [Deep Learning Meets Projective Clustering](https://arxiv.org/abs/2010.04290)
+* Code: [torchprune/method/messi](./torchprune/method/messi)
 
 #### **Norm-based matrix sampling** 
 * Paper: 
@@ -212,10 +222,25 @@ also abstract interfaces to add your own pruning methods.
   Best](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.297.576&rep=rep1&type=pdf)
 * Code: [torchprune/method/norm](./torchprune/method/norm)
 
+#### **PCA**
+* Per-layer principle component analysis for tensor decomposition
+* Paper: [Accelerating Very Deep Convolutional Networks for Classification and Detection](https://arxiv.org/abs/1505.06798)
+* Code: [torchprune/method/pca](./torchprune/method/pca)
+
+#### **L-Rank**
+* Paper: [Low-Rank Compression of Neural Nets: Learning the Rank of Each Layer](http://openaccess.thecvf.com/content_CVPR_2020/html/Idelbayev_Low-Rank_Compression_of_Neural_Nets_Learning_the_Rank_of_Each_CVPR_2020_paper.html)
+* Code: [torchprune/method/rank_learned](./torchprune/method/rank_learned)
+
 #### **Snip**
 * Paper: [SNIP: Single-shot Network Pruning based on Connection
   Sensitivity](https://arxiv.org/abs/1810.02340)
 * Code: [torchprune/method/snip](./torchprune/method/snip)
+
+
+#### **SVD**
+* Various simple per-layer decomposition methods based on SVD. Check out the
+  code for paper references and the different variations.
+* Code: [torchprune/method/svd](./torchprune/method/svd)
 
 #### **ThiNet**
 * Paper: [ThiNet: A Filter Level Pruning Method for Deep Neural Network

@@ -1,0 +1,24 @@
+retraining:
+  # 100% retraining
+  startEpoch: 0
+
+experiments:
+  methods:
+    - "ALDSNet"
+    - "ALDSNetOne"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.10
+    maxVal: 0.90
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 10
+      maxVal: 0.85
+      minVal: 0.12
+
+  retrainIterations: -1

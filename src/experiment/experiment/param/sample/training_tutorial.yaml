@@ -71,6 +71,7 @@ metricsTest:
 # *****************************************************************************
 #
 batchSize: 128
+testBatchSize: 128
 
 #
 # *****************************************************************************
@@ -86,12 +87,22 @@ optimizerKwargs:
   nesterov: False
   momentum: 0.9
 
+# Mixed Precision Training
+# This will enable mixed-precision training with torch.cuda.amp.autocast()
+# and torch.cuda.amp.GradScaler()
+enableAMP: True
+
 #
 # *****************************************************************************
 # ***************************** TRAINING EPOCHS *******************************
 # *****************************************************************************
 #
+
+# total number of epochs
 numEpochs: 182
+
+# epoch at which to start considering early stopping
+earlyStopEpoch: 182
 
 #
 # *****************************************************************************

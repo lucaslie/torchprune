@@ -1,0 +1,35 @@
+# Base Experiment is the classic retraining experiment
+file: "paper/alds/param/cifar/retrain/resnet20.yaml"
+
+# now we vary the amount of retraining
+customizations:
+  - key: ["retraining", "startEpoch"]
+    value: 0 # 100%
+  - key: ["retraining", "startEpoch"]
+    value: 46 # 75%
+  - key: ["retraining", "startEpoch"]
+    value: 91 # 50%
+  - key: ["retraining", "startEpoch"]
+    value: 110 # 40%
+  - key: ["retraining", "startEpoch"]
+    value: 136 # 30%
+  - key: ["retraining", "startEpoch"]
+    value: 146 # 20%
+  - key: ["retraining", "startEpoch"]
+    value: 155 # 15%
+  - key: ["retraining", "startEpoch"]
+    value: 164 # 10%
+  - key: ["retraining", "startEpoch"]
+    value: 168 # 7.5%
+  - key: ["retraining", "startEpoch"]
+    value: 173 # 5%
+  - key: ["retraining", "startEpoch"]
+    value: 176 # 3%
+  - key: ["retraining", "startEpoch"]
+    value: 178 # 2%
+  - key: ["retraining", "startEpoch"]
+    value: 180 # 1%
+  - key: ["retraining", "startEpoch"]
+    value: 181 # 0.05%
+  - key: ["retraining", "startEpoch"]
+    value: 182 # 0%

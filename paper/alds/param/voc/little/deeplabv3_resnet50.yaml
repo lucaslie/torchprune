@@ -1,0 +1,9 @@
+network:
+  name: "deeplabv3_resnet50"
+  dataset: "VOCSegmentation2012"
+  outputSize: 21
+
+training:
+  file: "training/voc/deeplab.yaml"
+
+file: "paper/alds/param/voc/little/common.yaml"

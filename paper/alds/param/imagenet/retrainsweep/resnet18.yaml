@@ -1,0 +1,25 @@
+# Base Experiment is the classic retraining experiment
+file: "paper/alds/param/imagenet/retrain/resnet18.yaml"
+
+# now we vary the amount of retraining
+customizations:
+  - key: ["retraining", "startEpoch"]
+    value: 0 # 100%
+  - key: ["retraining", "startEpoch"]
+    value: 45 # 50%
+  - key: ["retraining", "startEpoch"]
+    value: 67 # 25%
+  - key: ["retraining", "startEpoch"]
+    value: 76 # 15%
+  - key: ["retraining", "startEpoch"]
+    value: 81 # 10%
+  - key: ["retraining", "startEpoch"]
+    value: 85 # 5%
+  - key: ["retraining", "startEpoch"]
+    value: 87 # 3%
+  - key: ["retraining", "startEpoch"]
+    value: 88 # 2%
+  - key: ["retraining", "startEpoch"]
+    value: 89 # 1%
+  - key: ["retraining", "startEpoch"]
+    value: 90 # 0%

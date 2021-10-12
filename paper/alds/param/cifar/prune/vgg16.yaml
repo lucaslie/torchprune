@@ -1,0 +1,9 @@
+network:
+  name: "vgg16_bn"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/vgg.yaml"
+
+file: "paper/alds/param/cifar/prune/common.yaml"

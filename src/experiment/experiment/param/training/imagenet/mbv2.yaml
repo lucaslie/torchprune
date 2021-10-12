@@ -1,0 +1,30 @@
+#############################
+#                           #
+#       DO NOT CHANGE       #
+#                           #
+#############################
+
+# Training from:
+# https://arxiv.org/pdf/1801.04381.pdf
+# https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet
+
+file: "training/imagenet/common.yaml"
+
+numEpochs: 300
+
+# Set up for 8-GPU training
+lrSchedulers:
+  - type: StepLR
+    stepKwargs: { "step_size": 1 }
+    kwargs: { gamma: 0.98 }
+
+batchSize: 768 #  96 * 8 == 768
+testBatchSize: 96
+
+# 8 GPU configurations
+optimizer: "RMSprop"
+optimizerKwargs:
+  lr: 0.045
+  momentum: 0.9
+  alpha: 0.9
+  weight_decay: 0.00004

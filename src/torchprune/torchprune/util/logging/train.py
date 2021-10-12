@@ -25,15 +25,19 @@ class _StatTracker(object):
         # internal tracker for last epoch
         self._epoch = None
 
+        # first epoch for which we consider early stopping
+        self._early_stop_epoch = None
+
         self.reset(num_epochs)
 
-    def reset(self, num_epochs):
+    def reset(self, num_epochs, early_stop_epoch=0):
         """Reset the tracked statistics."""
         self._epochs = np.arange(num_epochs)
         self._loss = np.zeros(num_epochs)
         self._acc1 = np.zeros(num_epochs)
         self._acc5 = np.zeros(num_epochs)
         self._epoch = -1.0
+        self._early_stop_epoch = early_stop_epoch
 
     def update(self, epoch, loss, acc1, acc5):
         """Update the stats with the latest results."""
@@ -47,7 +51,7 @@ class _StatTracker(object):
         # update the results with a running average
         def _update_one_stat(stat, stat_update):
             weight_total = epoch - idx_e
-            if weight_total:
+            if weight_total > np.finfo(float).eps:
                 alpha = (self._epoch - idx_e) / weight_total
             else:
                 alpha = 0.0
@@ -85,7 +89,9 @@ class _StatTracker(object):
 
     def get_best_acc1_epoch(self):
         """Get the epoch corresponding to lowest acc1."""
-        e_valid = self._loss != 0.0
+        e_valid = np.logical_and(
+            self._loss != 0.0, self._epochs >= self._early_stop_epoch
+        )
 
         # filter and inverse list
         acc1_candidates = self._acc1[e_valid][::-1]
@@ -95,7 +101,7 @@ class _StatTracker(object):
         # (np returns first index, hence on inverse list)
         if len(acc1_candidates) > 0:
             return e_candidates[np.argmax(acc1_candidates)]
-        return -1
+        return -2
 
 
 class TrainLogger(object):
@@ -170,6 +176,7 @@ class TrainLogger(object):
         is_retraining,
         num_epochs,
         steps_per_epoch,
+        early_stop_epoch,
         metrics_test,
         n_idx=None,
         r_idx=None,
@@ -203,7 +210,7 @@ class TrainLogger(object):
 
         # reset trackers
         self.tracker_train.reset(num_epochs)
-        self.tracker_test.reset(num_epochs)
+        self.tracker_test.reset(num_epochs, early_stop_epoch)
 
         # store new test metrics (want two exactly)
         self._metrics_test = [metrics_test[0], metrics_test[1]]

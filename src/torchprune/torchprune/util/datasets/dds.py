@@ -4,7 +4,7 @@ import os
 from abc import ABC, abstractmethod
 
 import torch.utils.data as data
-from torchvision.datasets.utils import download_and_extract_archive
+from .download import download_and_extract_archive
 
 
 class DownloadDataset(data.Dataset, ABC):

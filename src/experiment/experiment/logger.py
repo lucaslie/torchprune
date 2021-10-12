@@ -1,8 +1,8 @@
 """A module that contains our custom Logger classes to keep track."""
-import os.path
+import os
 import pathlib
 import copy
-
+import zipfile
 import numpy as np
 from torch.utils import tensorboard as tb
 
@@ -259,7 +259,7 @@ class Logger:
         is_collective = False
 
         if results_dir_prev is None:
-            util_file.create_directory(self._results_dir)
+            os.makedirs(self._results_dir, exist_ok=True)
         else:
             tag = f"{self.global_tag}_{self.dataset_test}"
             data_dir = os.path.join(self._results_dir, "data")
@@ -280,7 +280,7 @@ class Logger:
                     break
 
         # create the directory (if not already existing)
-        util_file.create_directory(self._stdout_dir)
+        os.makedirs(self._stdout_dir, exist_ok=True)
 
         # setup logging (with convenience function)
         stdout_file = os.path.join(
@@ -386,7 +386,7 @@ class Logger:
         # checks may fail if data is not compatible, then return False
         try:
             return _check()
-        except ValueError:
+        except (ValueError, KeyError):
             return False
 
     def _check_completeness(self, data, resp=None):
@@ -500,7 +500,10 @@ class Logger:
     def _load_custom_state(self, filename):
         """Load custom state simply based on filename."""
         data = {}
-        data.update(np.load(filename, allow_pickle=True))
+        try:
+            data.update(np.load(filename, allow_pickle=True))
+        except (zipfile.BadZipFile, OSError, EOFError):
+            print("Pre-loading data failed due to broken zip-file.")
 
         # these are stored as 0d-array of type of 'object' --> extract item
         item_extraction = ["stats_comm", "dataset_test"]
@@ -522,7 +525,7 @@ class Logger:
         """Save the global state and generate all the plots."""
         if self._is_collector_worker and not fast_saving:
             # create directories needed here.
-            util_file.create_directory(self._plot_dir)
+            os.makedirs(self._plot_dir, exist_ok=True)
 
             # plot data and save plot
             # plotting should not throw error if it doesn't work
@@ -535,7 +538,7 @@ class Logger:
             self.stats_comm.update(self.compute_stats())
 
         # save data at the end
-        util_file.create_directory(self._data_dir)
+        os.makedirs(self._data_dir, exist_ok=True)
         self.save_custom_state(self._stats, self.dataset_test)
 
         # see if the stuff we store is also complete ...
@@ -553,7 +556,7 @@ class Logger:
         )
 
         # make sure directory exists
-        util_file.create_directory(self._data_dir)
+        os.makedirs(self._data_dir, exist_ok=True)
 
         # now save it
         np.savez(data_file_name, **state_dict)
@@ -743,7 +746,7 @@ class Logger:
             full_tag = self.global_tag + "/" + "Commensurate Report"
             full_name = f"report_{self.global_tag}_{self.dataset_test}.md"
             tp_logging.log_text(self._writer_general, full_tag, md_str, 0)
-            util_file.create_directory(self._reports_dir)
+            os.makedirs(self._reports_dir, exist_ok=True)
             with open(os.path.join(self._reports_dir, full_name), "w") as mdf:
                 mdf.write(md_str)
 

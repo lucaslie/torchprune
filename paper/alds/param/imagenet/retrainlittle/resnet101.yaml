@@ -1,0 +1,9 @@
+network:
+  name: "resnet101"
+  dataset: "ImageNet"
+  outputSize: 1000
+
+training:
+  file: "training/imagenet/resnet.yaml"
+
+file: "paper/alds/param/imagenet/retrainlittle/common.yaml"

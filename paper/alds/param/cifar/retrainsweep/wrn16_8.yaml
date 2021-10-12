@@ -1,0 +1,35 @@
+# Base Experiment is the classic retraining experiment
+file: "paper/alds/param/cifar/retrain/wrn16_8.yaml"
+
+# now we vary the amount of retraining
+customizations:
+  - key: ["retraining", "startEpoch"]
+    value: 0 # 100%
+  - key: ["retraining", "startEpoch"]
+    value: 50 # 75%
+  - key: ["retraining", "startEpoch"]
+    value: 100 # 50%
+  - key: ["retraining", "startEpoch"]
+    value: 120 # 40%
+  - key: ["retraining", "startEpoch"]
+    value: 140 # 30%
+  - key: ["retraining", "startEpoch"]
+    value: 160 # 20%
+  - key: ["retraining", "startEpoch"]
+    value: 170 # 15%
+  - key: ["retraining", "startEpoch"]
+    value: 180 # 10%
+  - key: ["retraining", "startEpoch"]
+    value: 185 # 7.5%
+  - key: ["retraining", "startEpoch"]
+    value: 190 # 5%
+  - key: ["retraining", "startEpoch"]
+    value: 194 # 3%
+  - key: ["retraining", "startEpoch"]
+    value: 196 # 2%
+  - key: ["retraining", "startEpoch"]
+    value: 198 # 1%
+  - key: ["retraining", "startEpoch"]
+    value: 199 # 0.05%
+  - key: ["retraining", "startEpoch"]
+    value: 200 # 0%

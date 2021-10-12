@@ -1,0 +1,51 @@
+network:
+  name: "alexnet_bn"
+  dataset: "ImageNet"
+  outputSize: 1000
+
+training:
+  file: "training/imagenet/alexnet.yaml"
+
+retraining:
+  startEpoch: 0
+
+experiments:
+  methods:
+    - "ALDSNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 1
+
+  plotting:
+    minVal: 0.1
+    maxVal: 0.95
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 10
+      maxVal: 0.50
+      minVal: 0.10
+    - type: "linear"
+      numIntervals: 3
+      maxVal: 0.09
+      minVal: 0.07
+    - type: "linear"
+      numIntervals: 3
+      maxVal: 0.065
+      minVal: 0.055
+    - type: "linear"
+      numIntervals: 7
+      maxVal: 0.05
+      minVal: 0.03
+    # FIX 1:
+    # - type: "linear"
+    #   numIntervals: 2
+    #   maxVal: 0.08
+    #   minVal: 0.06
+    # - type: "linear"
+    #   numIntervals: 5
+    #   maxVal: 0.05
+    #   minVal: 0.01
+
+  retrainIterations: -1

@@ -11,8 +11,6 @@ import torchprune.util.datasets as dsets
 from torchprune.util import transforms
 from torchprune.util import tensor
 
-from .file import create_directory
-
 __all__ = ["get_data_loader"]
 
 
@@ -34,6 +32,7 @@ def get_data_loader(param, net, c_constant):
     data_dir = os.path.realpath(param["directories"]["training_data"])
     valid_ratio = 0.1
     batch_size = param["generated"]["training"]["batchSize"]
+    test_batch_size = param["generated"]["training"]["testBatchSize"]
 
     # generate transform lists now
     def _get_transforms(transforms_type):
@@ -55,7 +54,7 @@ def get_data_loader(param, net, c_constant):
     # WHY? Cloud or not, 'local_data' will live on the fastest storage device
     # making subsequeny actions much faster...
     root = param["directories"]["local_data"]
-    create_directory(root)
+    os.makedirs(root, exist_ok=True)
 
     def get_dset(transform, train):
         # setup standard kwargs for all data sets
@@ -87,20 +86,8 @@ def get_data_loader(param, net, c_constant):
         # initialize and return instance
         return dset_class(**kwargs_dset)
 
-    def get_dataloader(dataset, shuffle=False, b_size=batch_size):
+    def get_dataloader(dataset, num_threads, shuffle=False, b_size=batch_size):
         """Construct data loader."""
-        # ensure that we don't parallelize in data loader with glue.
-        # It does not play out well ...
-        # (also no need to do that for other small-scale datasets)
-        no_thread_classes = (
-            dsets.MNIST,
-            dsets.BaseGlue,
-        )
-        if isinstance(dataset, no_thread_classes):
-            num_threads = 0
-        else:
-            num_threads = 4
-
         loader = torch.utils.data.DataLoader(
             dataset=dataset,
             batch_size=b_size,
@@ -113,65 +100,78 @@ def get_data_loader(param, net, c_constant):
         )
         return loader
 
-    # get test data and loader
+    # get test data
     set_test = get_dset(transform_test, train=False)
-    loader_test = get_dataloader(set_test)
+
+    # check desired number of threads
+    # ensure that we don't parallelize in data loader with glue.
+    # It does not play out well ...
+    # (also no need to do that for other small-scale datasets)
+    no_thread_classes = (
+        dsets.MNIST,
+        dsets.BaseGlue,
+    )
+    many_thread_classes = (
+        dsets.ImageNet,
+        dsets.VOCSegmentation2011,
+        dsets.VOCSegmentation2012,
+    )
+    if isinstance(set_test, no_thread_classes):
+        num_threads = 0
+    elif isinstance(set_test, many_thread_classes):
+        num_threads = 10 * np.clip(
+            param["generated"]["numAvailableGPUs"], 1, 4
+        )
+    else:
+        num_threads = 4
+
+    # get test loader
+    loader_test = get_dataloader(set_test, num_threads, b_size=test_batch_size)
 
     # get train/validation dataset
     # we have to do a manual split since true test data labels are not public
     set_train = get_dset(transform_train, train=True)
     set_valid = get_dset(transform_test, train=True)
 
-    # cache etas
-    with torch.no_grad():
-        device = next(net.parameters()).device
-        for in_data, _ in loader_test:
-            net(tensor.to(in_data, device))
-            break
-    eta = torch.sum(torch.Tensor(net.num_etas)).item()
-    eta_star = torch.max(torch.Tensor(net.num_etas)).item()
-
-    # Get the size of T. 'sizeOfT' from the param hereby represents the ratio
-    # from the validation set we want to use
-    size_t_rel = param["coresets"]["sizeOfT"]
-    assert size_t_rel <= 0.3
-    size_t = int(math.ceil(size_t_rel * len(set_valid)))
-
-    # Get the theoretical size of S.
-    delta = param["coresets"]["deltaS"] / eta
-    size_s = math.ceil(c_constant * math.log(8.0 * eta_star / delta))
-
-    # Make sure the computed sizes are a multiple of the batch size
-    size_s = _round_to_batch_size(size_s, batch_size)
-    size_t = _round_to_batch_size(size_t, batch_size)
-
-    # Limit it according to size_t since size_t is based on the ratio and thus
-    # never runs overboard
-    size_s = min(size_s, size_t)
-
-    # make sure that valid ratio is big enough for both valid set and s set
-    valid_size = _round_to_batch_size(valid_ratio * len(set_train), batch_size)
-    valid_size += max(0, size_s + batch_size - valid_size)
-    valid_ratio = valid_size / len(set_train)
-
     # get train/valid split
     idx_train, idx_valid = _get_valid_split(
-        data_dir, dset_name, len(set_train), valid_ratio, batch_size
+        data_dir,
+        dset_name,
+        len(set_train),
+        valid_ratio,
     )
 
     # now split the data
     set_train = torch.utils.data.Subset(set_train, idx_train)
     set_valid = torch.utils.data.Subset(set_valid, idx_valid)
 
-    # Further split validation set into valid set, S Set
+    # Get the theoretical size of S.
+    with torch.no_grad():
+        device = next(net.parameters()).device
+        for in_data, _ in loader_test:
+            # cache etas with this forward pass
+            net(tensor.to(in_data, device))
+            break
+    eta = torch.sum(torch.Tensor(net.num_etas)).item()
+    eta_star = torch.max(torch.Tensor(net.num_etas)).item()
+    delta = param["coresets"]["deltaS"] / eta
+    size_s = math.ceil(c_constant * math.log(8.0 * eta_star / delta))
+
+    # We don't want to use more than 50% of the validation data set for S
+    val_split_max = 0.5
+    size_s = min(size_s, int(math.ceil(val_split_max * len(set_valid))))
+
+    # Now split validation set into valid set, S Set
     set_valid, set_s = torch.utils.data.random_split(
         set_valid, [len(set_valid) - size_s, size_s]
     )
 
     # create the remaining loaders now
-    loader_train = get_dataloader(set_train, True)
-    loader_valid = get_dataloader(set_valid)
-    loader_s = get_dataloader(set_s, b_size=min(4, batch_size))
+    loader_train = get_dataloader(set_train, num_threads, shuffle=True)
+    loader_valid = get_dataloader(
+        set_valid, num_threads, b_size=test_batch_size
+    )
+    loader_s = get_dataloader(set_s, 0, b_size=min(4, test_batch_size))
 
     return {
         "train": loader_train,
@@ -188,7 +188,7 @@ def _glue_data_collator(features):
     return default_data_collator(inputs), torch.tensor(labels)
 
 
-def _get_valid_split(data_dir, dset_name, dset_len, ratio_valid, batch_size):
+def _get_valid_split(data_dir, dset_name, dset_len, ratio_valid):
     """Split a dataset into two datasets using index-based subsets."""
     file = os.path.join(data_dir, f"{dset_name}_validation.npz")
 
@@ -211,16 +211,13 @@ def _get_valid_split(data_dir, dset_name, dset_len, ratio_valid, batch_size):
         indices = list(range(dset_len))
         split = int(np.floor(ratio_valid * dset_len))
 
-        # convert split to be a multiple of batch_size
-        split = _round_to_batch_size(split, batch_size)
-
         # shuffle indices
         np.random.seed()
         np.random.shuffle(indices)
         idx_train, idx_valid = indices[split:], indices[:split]
 
         # make sure directory exists
-        create_directory(data_dir)
+        os.makedirs(data_dir, exist_ok=True)
 
         # save data
         np.savez(
@@ -228,8 +225,3 @@ def _get_valid_split(data_dir, dset_name, dset_len, ratio_valid, batch_size):
         )
 
     return idx_train, idx_valid
-
-
-def _round_to_batch_size(number, batch_size):
-    """Round number to the neareast multiple of batch_size."""
-    return int(batch_size * math.ceil(float(number) / batch_size))
