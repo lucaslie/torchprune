@@ -1,0 +1,56 @@
+# Base Experiment is the classic retraining experiment
+network:
+  file: "paper/node/param/toy/ffjord/spirals/network_da.yaml"
+
+training:
+  file: "paper/node/param/toy/ffjord/spirals/training.yaml"
+
+file: "paper/node/param/directories.yaml"
+
+retraining:
+  startEpoch: 0
+
+experiments:
+  methods: []
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 1
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 2
+      maxVal: 0.80
+      minVal: 0.20
+
+  retrainIterations: -1
+
+customizations:
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05, "weight_decay": 0.01 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05, "weight_decay": 1.0e-6 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05, "weight_decay": 1.0e-5 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05, "weight_decay": 1.0e-4 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01, "weight_decay": 0.01 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01, "weight_decay": 1.0e-6 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01, "weight_decay": 1.0e-5 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01, "weight_decay": 1.0e-4 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005, "weight_decay": 0.01 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005, "weight_decay": 1.0e-7 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005, "weight_decay": 1.0e-6 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005, "weight_decay": 1.0e-5 }

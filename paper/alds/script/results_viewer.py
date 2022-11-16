@@ -38,7 +38,7 @@ else:
 TABLE_BOLD_THRESHOLD = 0.005
 
 # auto-discover files from folder without "common.yaml"
-FILES = glob.glob(os.path.join(FOLDER, "[!common]*.yaml"))
+FILES = glob.glob(os.path.join(FOLDER, "*[!common]*.yaml"))
 
 
 def key_files(item):
@@ -52,6 +52,7 @@ def key_files(item):
         "resnet18",
         "resnet101",
         "wide_resnet50_2",
+        "mobilenet_v2",
         "deeplabv3_resnet50",
     ]
 
@@ -127,6 +128,8 @@ def get_results(file, logger, legend_on):
         elif "imagenet/prune" in file:
             graphers[0]._figure.gca().set_xlim([0, 87])
             graphers[0]._figure.gca().set_ylim([-87, 5])
+        elif "imagenet/retrain/mobilenet_v2" in file:
+            graphers[0]._figure.gca().set_ylim([-5, 0.5])
         elif "imagenet/retrain/" in file:
             graphers[0]._figure.gca().set_ylim([-3.5, 1.5])
         elif "imagenet/retraincascade" in file:
@@ -317,6 +320,7 @@ def generate_table_entries(
             "resnet18": "ResNet18",
             "resnet101": "ResNet101",
             "wide_resnet50_2": "WRN50-2",
+            "mobilenet_v2": "MobileNetV2",
             "deeplabv3_resnet50": "DeeplabV3-ResNet50",
         }
 

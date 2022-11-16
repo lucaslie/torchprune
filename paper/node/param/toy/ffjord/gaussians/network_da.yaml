@@ -1,0 +1,3 @@
+name: "ffjord_l4_h64_sigmoid_da"
+dataset: "ToyGaussians"
+outputSize: 2

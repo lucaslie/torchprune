@@ -1,0 +1,14 @@
+file: "paper/node/param/toy/ffjord/common/experiment.yaml"
+
+# now we vary the architecture
+customizations:
+  - key: ["network", "name"]
+    value: "ffjord_l8_h37_sigmoid_da"
+  - key: ["network", "name"]
+    value: "ffjord_l6_h45_sigmoid_da"
+  - key: ["network", "name"]
+    value: "ffjord_l4_h64_sigmoid_da"
+  - key: ["network", "name"]
+    value: "ffjord_l3_h90_sigmoid_da"
+  - key: ["network", "name"]
+    value: "ffjord_l2_h1700_sigmoid_da"

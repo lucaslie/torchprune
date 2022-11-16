@@ -1,0 +1,33 @@
+network:
+  name: "lenet300_100"
+  dataset: "MNIST"
+  outputSize: 10
+
+training:
+  file: "training/mnist/lenet.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "SiPPNet"
+    - "SiPPNetRand"
+    - "SiPPNetHybrid"
+    - "ThresNet"
+    - "SnipNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.01
+    maxVal: 0.3
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 30
+      maxVal: 0.80
+      minVal: 0.01
+
+  retrainIterations: -1

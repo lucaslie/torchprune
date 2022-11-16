@@ -1,0 +1,16 @@
+file: "paper/node/param/toy/ffjord/common/experiment.yaml"
+
+# we vary the solver
+customizations:
+  - key: ["network", "name"]
+    value: "ffjord_l4_h64_sigmoid_rk4_autograd"
+  - key: ["network", "name"]
+    value: "ffjord_l4_h64_sigmoid_rk4_adjoint"
+  - key: ["network", "name"]
+    value: "ffjord_l4_h64_sigmoid_dopri_autograd"
+  - key: ["network", "name"]
+    value: "ffjord_l4_h64_sigmoid_dopri_adjoint"
+  - key: ["network", "name"]
+    value: "ffjord_l4_h64_sigmoid_euler_autograd"
+  - key: ["network", "name"]
+    value: "ffjord_l4_h64_sigmoid_euler_adjoint"

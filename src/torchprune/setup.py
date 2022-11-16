@@ -34,6 +34,7 @@ setuptools.setup(
         "torch",
         "torchvision",
         "tensorboard",
+        "torchdyn==1.0.1",
         "protobuf",
         "wand",
         "transformers @ git+https://github.com/huggingface/transformers.git",

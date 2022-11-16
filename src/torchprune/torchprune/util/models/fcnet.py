@@ -71,3 +71,11 @@ def lenet300_100(num_classes, **kwargs):
 def lenet500_300_100(num_classes, **kwargs):
     """Initialize a LeNet500-300-100 with the FCNet class."""
     return FCNet([784, 500, 300, 100, num_classes], False)
+
+
+def fcnet_nettrim(num_classes, **kwargs):
+    """Return a FC architectures according to Net-Trim.
+
+    Net-Trim paper: https://epubs.siam.org/doi/pdf/10.1137/19M1246468
+    """
+    return FCNet([784, 300, 1000, 100, num_classes], False)

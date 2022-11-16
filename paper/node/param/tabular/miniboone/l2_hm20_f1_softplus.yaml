@@ -1,0 +1,65 @@
+network:
+  name: "ffjord_l2_hm20_f1_softplus"
+  dataset: "Miniboone"
+  outputSize: 43
+
+training:
+  transformsTrain: []
+  transformsTest: []
+  transformsFinal: []
+
+  loss: "NLLNatsLoss"
+  lossKwargs: {}
+
+  metricsTest:
+    - type: NLLNats
+      kwargs: {}
+    - type: Dummy
+      kwargs: {}
+
+  batchSize: 1000
+
+  optimizer: "Adam"
+  optimizerKwargs:
+    lr: 1.0e-3
+    weight_decay: 1.0e-6
+
+  numEpochs: 400
+  earlyStopEpoch: 0
+
+  enableAMP: False
+
+  lrSchedulers:
+    - type: MultiStepLR
+      stepKwargs: { milestones: [300, 350] }
+      kwargs: { gamma: 0.1 }
+
+file: "paper/node/param/directories.yaml"
+
+retraining:
+  startEpoch: 0
+
+experiments:
+  methods:
+    - "ThresNet"
+    - "FilterThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 12
+      maxVal: 0.80
+      minVal: 0.05
+    - type: "linear"
+      numIntervals: 4
+      maxVal: 0.04
+      minVal: 0.01
+
+  retrainIterations: -1

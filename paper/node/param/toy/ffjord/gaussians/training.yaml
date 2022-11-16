@@ -1,0 +1,25 @@
+transformsTrain: []
+transformsTest: []
+transformsFinal: []
+
+loss: "NLLPriorLoss"
+lossKwargs: {}
+
+metricsTest:
+  - type: NLLPrior
+    kwargs: {}
+  - type: Dummy
+    kwargs: {}
+
+batchSize: 1024
+
+optimizer: "AdamW"
+optimizerKwargs:
+  lr: 5.0e-3
+  weight_decay: 1.0e-5
+
+numEpochs: 100
+
+enableAMP: False
+
+lrSchedulers: []

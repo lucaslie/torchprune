@@ -413,6 +413,22 @@ download location.
   place the `SegmentationClassAug.zip` file into `file_dir`.
 * Everything else is handled automatically.
 
+#### **Toy Datasets**
+* Code:
+  [torchprune/util/datasets/toy.py](./torchprune/util/datasets/toy.py)
+* Description: [Torchdyn
+  tutorial](https://torchdyn.readthedocs.io/en/latest/tutorials/00_quickstart.html#Generate-data-from-a-static-toy-dataset)
+* Everything is generated automatically using the `torchdyn` library.
+
+#### **Tabular Datasets**
+* Code:
+  [torchprune/util/datasets/tabular.py](./torchprune/util/datasets/tabular.py)
+* Description: [Pre-processed tabular datasets](https://github.com/gpapamak/maf#how-to-get-the-datasets)
+* Please download data from 
+  [here](https://zenodo.org/record/1161203#.Wmtf_XVl8eN)
+  place the `data.tar.gz` file into `file_dir`.
+* Everything else is handled automatically.
+
 #### **Corrupted PASCAL VOC Segmentation Datasets**
 * Code:
   [torchprune/util/datasets/voc.py](./torchprune/util/datasets/voc.py)

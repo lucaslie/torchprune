@@ -88,15 +88,26 @@ def get_data_loader(param, net, c_constant):
 
     def get_dataloader(dataset, num_threads, shuffle=False, b_size=batch_size):
         """Construct data loader."""
+        # ensure that we don't parallelize in data loader with glue.
+        # It does not play out well ...
+        # (also no need to do that for other small-scale datasets)
+        no_thread_classes = (
+            dsets.MNIST,
+            dsets.BaseGlue,
+            dsets.BaseToyDataset,
+        )
+        if isinstance(dataset, no_thread_classes):
+            num_threads = 0
+        else:
+            num_threads = 4
+
         loader = torch.utils.data.DataLoader(
             dataset=dataset,
             batch_size=b_size,
             num_workers=num_threads,
             shuffle=shuffle,
             pin_memory=True,
-            collate_fn=_glue_data_collator
-            if isinstance(dataset, dsets.BaseGlue)
-            else None,
+            collate_fn=_glue_data_collator if isinstance(dataset, dsets.BaseGlue) else None,
         )
         return loader
 
@@ -110,6 +121,8 @@ def get_data_loader(param, net, c_constant):
     no_thread_classes = (
         dsets.MNIST,
         dsets.BaseGlue,
+        dsets.BaseToyDataset,
+        dsets.BaseTabularDataset,
     )
     many_thread_classes = (
         dsets.ImageNet,
@@ -119,9 +132,7 @@ def get_data_loader(param, net, c_constant):
     if isinstance(set_test, no_thread_classes):
         num_threads = 0
     elif isinstance(set_test, many_thread_classes):
-        num_threads = 10 * np.clip(
-            param["generated"]["numAvailableGPUs"], 1, 4
-        )
+        num_threads = 10 * np.clip(param["generated"]["numAvailableGPUs"], 1, 4)
     else:
         num_threads = 4
 
@@ -134,12 +145,17 @@ def get_data_loader(param, net, c_constant):
     set_valid = get_dset(transform_test, train=True)
 
     # get train/valid split
-    idx_train, idx_valid = _get_valid_split(
-        data_dir,
-        dset_name,
-        len(set_train),
-        valid_ratio,
-    )
+    if hasattr(set_train, "get_valid_split"):
+        # use pre-defined split if it exists
+        idx_train, idx_valid = set_train.get_valid_split()
+    else:
+        # use a random split and record it
+        idx_train, idx_valid = _get_valid_split(
+            data_dir,
+            dset_name,
+            len(set_train),
+            valid_ratio,
+        )
 
     # now split the data
     set_train = torch.utils.data.Subset(set_train, idx_train)
@@ -162,15 +178,11 @@ def get_data_loader(param, net, c_constant):
     size_s = min(size_s, int(math.ceil(val_split_max * len(set_valid))))
 
     # Now split validation set into valid set, S Set
-    set_valid, set_s = torch.utils.data.random_split(
-        set_valid, [len(set_valid) - size_s, size_s]
-    )
+    set_valid, set_s = torch.utils.data.random_split(set_valid, [len(set_valid) - size_s, size_s])
 
     # create the remaining loaders now
     loader_train = get_dataloader(set_train, num_threads, shuffle=True)
-    loader_valid = get_dataloader(
-        set_valid, num_threads, b_size=test_batch_size
-    )
+    loader_valid = get_dataloader(set_valid, num_threads, b_size=test_batch_size)
     loader_s = get_dataloader(set_s, 0, b_size=min(4, test_batch_size))
 
     return {
@@ -220,8 +232,6 @@ def _get_valid_split(data_dir, dset_name, dset_len, ratio_valid):
         os.makedirs(data_dir, exist_ok=True)
 
         # save data
-        np.savez(
-            file, set2Idx=idx_train, set1Idx=idx_valid, ratioSet1=ratio_valid
-        )
+        np.savez(file, set2Idx=idx_train, set1Idx=idx_valid, ratioSet1=ratio_valid)
 
     return idx_train, idx_valid

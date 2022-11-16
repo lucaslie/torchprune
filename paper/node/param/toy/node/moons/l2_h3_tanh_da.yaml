@@ -1,0 +1,8 @@
+network:
+  name: "node_l2_h3_tanh_da"
+  file: "paper/node/param/toy/node/moons/network_da.yaml"
+
+training:
+  file: "paper/node/param/toy/node/moons/training.yaml"
+
+file: "paper/node/param/toy/node/common/experiment.yaml"

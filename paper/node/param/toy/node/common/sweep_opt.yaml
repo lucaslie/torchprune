@@ -1,0 +1,28 @@
+file: "paper/node/param/toy/node/common/experiment.yaml"
+
+# now we vary the optimizer
+customizations:
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05, "weight_decay": 1.0e-6 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05, "weight_decay": 1.0e-5 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.05, "weight_decay": 1.0e-4 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01, "weight_decay": 1.0e-6 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01, "weight_decay": 1.0e-5 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.01, "weight_decay": 1.0e-4 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005, "weight_decay": 1.0e-7 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005, "weight_decay": 1.0e-6 }
+  - key: ["training", "optimizerKwargs"]
+    value: { "lr": 0.005, "weight_decay": 1.0e-5 }

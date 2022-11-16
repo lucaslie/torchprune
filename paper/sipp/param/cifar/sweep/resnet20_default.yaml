@@ -1,0 +1,36 @@
+network:
+  name: "resnet20"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/resnet.yaml"
+
+retraining:
+  numEpochs: 0
+
+experiments:
+  methods:
+    - "SiPPNet"
+    - "SiPPNetRand"
+    - "SiPPNetHybrid"
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.99
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 30
+      maxVal: 0.90
+      minVal: 0.40
+
+  retrainIterations: -1
+
+# coreset parameters
+coresets:
+  deltaS: 1.0e-16 # 183

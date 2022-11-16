@@ -1,0 +1,3 @@
+name: "node_l2_h64_tanh_da"
+dataset: "ToySpirals"
+outputSize: 2

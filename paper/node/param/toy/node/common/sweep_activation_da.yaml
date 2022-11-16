@@ -1,0 +1,12 @@
+file: "paper/node/param/toy/node/common/experiment.yaml"
+
+# now we vary the activation function
+customizations:
+  - key: ["network", "name"]
+    value: "node_l2_h64_tanh_da"
+  - key: ["network", "name"]
+    value: "node_l2_h64_sigmoid_da"
+  - key: ["network", "name"]
+    value: "node_l2_h64_softplus_da"
+  - key: ["network", "name"]
+    value: "node_l2_h64_relu_da"

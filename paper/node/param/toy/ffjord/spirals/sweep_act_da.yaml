@@ -1,0 +1,9 @@
+# Base Experiment is the classic retraining experiment
+network:
+  file: "paper/node/param/toy/ffjord/spirals/network_da.yaml"
+
+training:
+  file: "paper/node/param/toy/ffjord/spirals/training.yaml"
+
+# now we vary the activation function
+file: "paper/node/param/toy/ffjord/common/sweep_activation_da.yaml"

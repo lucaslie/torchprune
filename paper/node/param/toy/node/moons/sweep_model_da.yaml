@@ -1,0 +1,9 @@
+# Base Experiment is the classic retraining experiment
+network:
+  file: "paper/node/param/toy/node/moons/network_da.yaml"
+
+training:
+  file: "paper/node/param/toy/node/moons/training.yaml"
+
+# now we vary the activation function
+file: "paper/node/param/toy/node/common/sweep_model_da.yaml"

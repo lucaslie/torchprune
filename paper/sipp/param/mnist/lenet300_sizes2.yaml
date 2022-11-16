@@ -1,0 +1,60 @@
+file: "paper/sipp/param/mnist/lenet300.yaml"
+# Make sure num_customization is divisible by num_workers during deployment!!!
+# Currently, we have 15 customizations here...
+
+retraining:
+  startEpoch: 48
+
+experiments:
+  methods:
+    - "SiPPNet"
+    - "SiPPNetRand"
+    - "SiPPNetHybrid"
+  mode: "retrain"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.01
+    maxVal: 0.3
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 30
+      maxVal: 0.99
+      minVal: 0.30
+
+  retrainIterations: -1
+
+customizations:
+  - key: ["coresets", "deltaS"]
+    value: 1.0e+1
+  - key: ["coresets", "deltaS"]
+    value: 1.0e+0
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-1
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-2
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-4
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-6
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-8
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-10
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-12
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-14
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-16 # standard, 183
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-20
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-24
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-28
+  - key: ["coresets", "deltaS"]
+    value: 1.0e-32

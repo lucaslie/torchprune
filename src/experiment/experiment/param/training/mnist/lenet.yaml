@@ -6,7 +6,11 @@
 
 batchSize: 64
 
-transformsTrain: []
+transformsTrain:
+  - type: Pad
+    kwargs: { padding: 4 }
+  - type: RandomCrop
+    kwargs: { size: 28 }
 transformsTest: []
 transformsFinal:
   - type: ToTensor
@@ -21,7 +25,7 @@ optimizerKwargs:
   nesterov: False
   momentum: 0.9
 
-numEpochs: 40
+numEpochs: 50
 
 lrSchedulers:
   - type: MultiStepLR

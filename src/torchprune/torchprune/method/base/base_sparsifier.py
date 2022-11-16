@@ -84,10 +84,13 @@ class DetSparsifier(SimpleSparsifier):
     def _generate_counts(self, num_samples, probs):
         mask = torch.zeros_like(probs, dtype=torch.bool)
         numel = probs.numel()
-        num_samples = int(np.clip(1, int(num_samples), numel))
-        idx_top = np.argpartition(probs.view(-1).cpu().numpy(), -num_samples)[
-            -num_samples:
-        ]
+        num_samples = int(np.clip(0, int(num_samples), numel))
+        if num_samples > 0:
+            idx_top = np.argpartition(
+                probs.view(-1).cpu().numpy(), -num_samples
+            )[-num_samples:]
+        else:
+            idx_top = []
         mask.view(-1)[idx_top] = True
 
         return mask

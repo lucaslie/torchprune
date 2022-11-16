@@ -39,3 +39,16 @@ class ReferenceNet(BaseCompressedNet):
     def flops(self):
         """Fake flops with current keep_ratio."""
         return super().flops() * float(self._keep_ratio_latest)
+
+
+class FakeNet(ReferenceNet):
+    """A reference net that is retrainable.
+
+    By enabling retraining we can simulate an unpruned network that gets the
+    exact same training and retraining as the pruned networks.
+    """
+
+    @property
+    def retrainable(self):
+        """Indicate whether we can retrain after applying this method."""
+        return True

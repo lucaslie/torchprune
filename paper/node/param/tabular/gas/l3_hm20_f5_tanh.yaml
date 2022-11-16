@@ -1,0 +1,61 @@
+network:
+  name: "ffjord_l3_hm20_f5_tanh"
+  dataset: "Gas"
+  outputSize: 8
+
+training:
+  transformsTrain: []
+  transformsTest: []
+  transformsFinal: []
+
+  loss: "NLLNatsLoss"
+  lossKwargs: {}
+
+  metricsTest:
+    - type: NLLNats
+      kwargs: {}
+    - type: Dummy
+      kwargs: {}
+
+  batchSize: 1000
+
+  optimizer: "Adam"
+  optimizerKwargs:
+    lr: 1.0e-3
+    weight_decay: 1.0e-6
+
+  numEpochs: 30
+  earlyStopEpoch: 0
+
+  enableAMP: False
+
+  lrSchedulers:
+    - type: MultiStepLR
+      stepKwargs: { milestones: [25, 28] }
+      kwargs: { gamma: 0.1 }
+
+file: "paper/node/param/directories.yaml"
+
+retraining:
+  startEpoch: 0
+
+experiments:
+  methods:
+    - "ThresNet"
+    - "FilterThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 1
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 8
+      maxVal: 0.70
+      minVal: 0.10
+
+  retrainIterations: -1

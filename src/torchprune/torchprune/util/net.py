@@ -60,6 +60,10 @@ class NetHandle(nn.Module):
                 continue
             if hasattr(module, "groups") and module.groups > 1:
                 continue
+            if hasattr(self.torchnet, "is_compressible") and not self.torchnet.is_compressible(
+                module
+            ):
+                continue
             self.compressible_layers.append(module)
             self.num_weights.append(module.weight.data.numel())
 
@@ -76,9 +80,7 @@ class NetHandle(nn.Module):
         flops = 0
         if len(self.num_patches) == self.num_compressible_layers:
             for ell, module in enumerate(self.compressible_layers):
-                flops += (
-                    module.weight != 0.0
-                ).sum().item() * self.num_patches[ell]
+                flops += (module.weight != 0.0).sum().item() * self.num_patches[ell]
         return flops
 
     def compressible_size(self):

@@ -132,3 +132,18 @@ class SegNormalize(object):
         """Normalize image but not target."""
         image = F.normalize(image, mean=self.mean, std=self.std)
         return image, target
+
+
+class RandomNoise(object):
+    """Random uniform noise transformation."""
+
+    def __init__(self, normalization):
+        """Initialize with normalization constant."""
+        self._normalization = normalization
+
+    def __call__(self, image):
+        """Return noise image from the current image."""
+        noise = image.new().resize_as_(image).uniform_()
+        image = image * self._normalization + noise
+        image = image / (self._normalization + 1)
+        return image

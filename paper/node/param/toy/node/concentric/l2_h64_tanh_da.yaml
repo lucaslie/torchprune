@@ -1,0 +1,7 @@
+network:
+  file: "paper/node/param/toy/node/concentric/network_da.yaml"
+
+training:
+  file: "paper/node/param/toy/node/concentric/training.yaml"
+
+file: "paper/node/param/toy/node/common/experiment.yaml"

@@ -1,0 +1,61 @@
+network:
+  name: "ffjord_l3_hm10_f5_tanh"
+  dataset: "Power"
+  outputSize: 6
+
+training:
+  transformsTrain: []
+  transformsTest: []
+  transformsFinal: []
+
+  loss: "NLLNatsLoss"
+  lossKwargs: {}
+
+  metricsTest:
+    - type: NLLNats
+      kwargs: {}
+    - type: Dummy
+      kwargs: {}
+
+  batchSize: 10000
+
+  optimizer: "Adam"
+  optimizerKwargs:
+    lr: 1.0e-3
+    weight_decay: 1.0e-6
+
+  numEpochs: 100
+  earlyStopEpoch: 0
+
+  enableAMP: False
+
+  lrSchedulers:
+    - type: MultiStepLR
+      stepKwargs: { milestones: [90, 97] }
+      kwargs: { gamma: 0.1 }
+
+file: "paper/node/param/directories.yaml"
+
+retraining:
+  startEpoch: 0
+
+experiments:
+  methods:
+    - "ThresNet"
+    - "FilterThresNet"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 1
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 8
+      maxVal: 0.70
+      minVal: 0.10
+
+  retrainIterations: -1

@@ -1,0 +1,7 @@
+network:
+  file: "paper/node/param/toy/ffjord/spirals/network_da.yaml"
+
+training:
+  file: "paper/node/param/toy/ffjord/spirals/training.yaml"
+
+file: "paper/node/param/toy/ffjord/common/experiment.yaml"

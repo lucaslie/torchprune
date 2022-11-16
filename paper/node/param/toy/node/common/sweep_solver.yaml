@@ -1,0 +1,16 @@
+file: "paper/node/param/toy/node/common/experiment.yaml"
+
+# now we vary the solver
+customizations:
+  - key: ["network", "name"]
+    value: "node_l4_h32_tanh_dopri_adjoint"
+  - key: ["network", "name"]
+    value: "node_l4_h32_tanh_dopri_autograd"
+  - key: ["network", "name"]
+    value: "node_l4_h32_tanh_rk4_adjoint"
+  - key: ["network", "name"]
+    value: "node_l4_h32_tanh_rk4_autograd"
+  - key: ["network", "name"]
+    value: "node_l4_h32_tanh_euler_adjoint"
+  - key: ["network", "name"]
+    value: "node_l4_h32_tanh_euler_autograd"

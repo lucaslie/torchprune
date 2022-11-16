@@ -1,0 +1,6 @@
+# relative directories from where main.py was called
+directories:
+  results: "./data/node/results"
+  trained_networks: null
+  training_data: "./data/training"
+  local_data: "./local"

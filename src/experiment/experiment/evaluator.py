@@ -107,8 +107,6 @@ class Evaluator(object):
 
         # Failure probability for constructing S.
         self._delta = param["coresets"]["deltaS"]
-        # Failure probability to pick a good coreset (only used for SiPPNet++).
-        self._delta_best = param["coresets"]["deltaBest"]
 
         # extract keep and compress ratios
         self._keep_ratios = param["generated"]["keepRatios"]

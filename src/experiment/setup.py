@@ -23,6 +23,7 @@ setuptools.setup(
     install_requires=[
         "matplotlib",
         "numpy",
+        "pyhessian",
         "pyyaml",
         "seaborn",
         "torch",

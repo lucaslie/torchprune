@@ -1,0 +1,25 @@
+transformsTrain: []
+transformsTest: []
+transformsFinal: []
+
+loss: "CrossEntropyLoss"
+lossKwargs: { reduction: mean }
+
+metricsTest:
+  - type: TopK
+    kwargs: { topk: 1 }
+  - type: MCorr
+    kwargs: {}
+
+batchSize: 128
+
+optimizer: "Adam"
+optimizerKwargs:
+  lr: 0.01
+  weight_decay: 1.0e-5
+
+numEpochs: 100
+
+enableAMP: False
+
+lrSchedulers: []

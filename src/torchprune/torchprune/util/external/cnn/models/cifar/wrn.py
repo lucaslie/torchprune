@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = ['wrn', 'wrn16_8', 'wrn28_10', 'wrn40_1', 'wrn40_4']
+__all__ = ['wrn', 'wrn16_8', 'wrn28_2', 'wrn28_10', 'wrn40_1', 'wrn40_4']
 
 class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
@@ -126,3 +126,9 @@ def wrn28_10(**kwargs):
     WRN, depth 28, widening factor 10
     """
     return WideResNet(depth=28, widen_factor=10, **kwargs)
+
+def wrn28_2(**kwargs):
+    """
+    WRN, depth 28, widening factor 2
+    """
+    return WideResNet(depth=28, widen_factor=2, **kwargs)

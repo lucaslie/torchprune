@@ -67,7 +67,7 @@ class DownloadDataset(data.Dataset, ABC):
 
         Args:
             root (str): where to store the data set to be downloaded.
-            file_dir (str): where to look before downloading it from S3.
+            file_dir (str): where to look for downloading data.
             train (bool, optional): train or test data set. Defaults to True.
             transform (torchvision.transforms, optional): set of transforms to
             apply to input data. Defaults to None.
@@ -139,7 +139,7 @@ class DownloadDataset(data.Dataset, ABC):
         # it might not be a PIL image yet ...
         img = self._convert_to_pil(img)
 
-        # target might be weird, so convert it forst
+        # target might be weird, so convert it first
         target = self._convert_target(target)
 
         if self.transform is not None:

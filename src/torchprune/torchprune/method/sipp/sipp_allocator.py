@@ -332,7 +332,8 @@ class SiPPHybridAllocator(BaseAllocator):
         """Get the number of samples for a particular layer index."""
         # get optimal sample numbers from randAllocator
         num_samples = self._allocator_rand.get_num_samples(layer)
-        num_samples[num_samples < 0] = 1
+        no_sampling = num_samples < 0
+        num_samples[no_sampling] = 1
 
         # check error for both methods
         error_rand = self._allocator_rand._get_error_theoretical(
@@ -345,5 +346,8 @@ class SiPPHybridAllocator(BaseAllocator):
         # do random when random is better
         use_rand = error_det > error_rand
         num_samples[use_rand] = -num_samples[use_rand]
+
+        # reset zero samples to zero
+        num_samples[no_sampling] = 0
 
         return num_samples

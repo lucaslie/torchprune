@@ -1,0 +1,8 @@
+network:
+  file: "paper/node/param/toy/ffjord/spirals/network_da.yaml"
+  name: "cnf_l4_h64_sigmoid_da_high_tol"
+
+training:
+  file: "paper/node/param/toy/ffjord/spirals/training.yaml"
+
+file: "paper/node/param/toy/ffjord/common/experiment.yaml"

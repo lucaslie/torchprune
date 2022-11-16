@@ -6,7 +6,7 @@
 [Daniela Rus](http://danielarus.csail.mit.edu/)
 
 Implementation of provable pruning using sensitivity as introduced in  [SiPPing
-Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks](https://arxiv.org/abs/1910.05422)
+Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks](https://doi.org/10.1137/20M1383239)
 (weight pruning).
 
 ***Equal contribution**
@@ -55,10 +55,14 @@ Please cite our paper when using this codebase.
 
 ### Bibtex
 ```
-@article{baykal2019sipping,
-  title={SiPPing Neural Networks: Sensitivity-informed Provable Pruning of Neural Networks},
+@article{baykal2022sensitivity,
+  title={Sensitivity-informed provable pruning of neural networks},
   author={Baykal, Cenk and Liebenwein, Lucas and Gilitschenski, Igor and Feldman, Dan and Rus, Daniela},
-  journal={arXiv preprint arXiv:1910.05422},
-  year={2019}
+  journal={SIAM Journal on Mathematics of Data Science},
+  volume={4},
+  number={1},
+  pages={26--45},
+  year={2022},
+  publisher={SIAM}
 }
 ```

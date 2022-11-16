@@ -3,10 +3,10 @@
 -e ./src/experiment
 
 # We need those with special tags unfortunately...
--f https://download.pytorch.org/whl/torch_stable.html
-torch==1.7.1+cu110
-torchvision==0.8.2+cu110
-torchaudio===0.7.2
+-f https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+torch==1.8.2+cu111 
+torchvision==0.9.2+cu111 
+torchaudio==0.8.2 
 
 # Some extra requirements for the code base
 jupyter

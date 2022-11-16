@@ -39,6 +39,7 @@ directories:
 network_names:
   ReferenceNet: ReferenceNet
   NetHandle: ReferenceNet
+  FakeNet: FakeNet
   EllOneAndTwoNet: $\frac{\ell_1+\ell_2}{2}$
   EllOneNet: $\ell_1$
   EllTwoNet: $\ell_2$
@@ -77,6 +78,7 @@ network_names:
 network_colors:
   ReferenceNet: black
   NetHandle: black
+  FakeNet: grey
   EllOneAndTwoNet: purple
   EllOneNet: blueviolet
   EllTwoNet: magenta

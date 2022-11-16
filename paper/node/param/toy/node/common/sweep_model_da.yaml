@@ -1,0 +1,14 @@
+file: "paper/node/param/toy/node/common/experiment.yaml"
+
+# now we vary the architecture
+customizations:
+  - key: ["network", "name"]
+    value: "node_l2_h32_tanh_da"
+  - key: ["network", "name"]
+    value: "node_l2_h64_tanh_da"
+  - key: ["network", "name"]
+    value: "node_l2_h128_tanh_da"
+  - key: ["network", "name"]
+    value: "node_l4_h32_tanh_da"
+  - key: ["network", "name"]
+    value: "node_l4_h128_tanh_da"

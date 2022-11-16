@@ -1,0 +1,31 @@
+network:
+  name: "wrn28_2"
+  dataset: "CIFAR10"
+  outputSize: 10
+
+training:
+  file: "training/cifar/wrn.yaml"
+
+retraining: {}
+
+experiments:
+  methods:
+    - "SiPPNet"
+    - "SiPPNetRand"
+    - "SiPPNetHybrid"
+  mode: "cascade"
+
+  numRepetitions: 1
+  numNets: 3
+
+  plotting:
+    minVal: 0.02
+    maxVal: 0.85
+
+  spacing:
+    - type: "geometric"
+      numIntervals: 20
+      maxVal: 0.70
+      minVal: 0.05
+
+  retrainIterations: -1
